@@ -198,7 +198,7 @@ class Wire(IDObject):
         return '{} -[{}]-> {}'.format(self.src.name, self.width, self.dst.name)
 
 class Design(NamedIDObject):
-    def __init__(self, adj_dict, fabric, position_type, name='', constraint_generators=(), optimizers=()):
+    def __init__(self, adj_dict, fabric, position_type, pinned_comps=None, name='', constraint_generators=(), optimizers=()):
         '''
         adj_dict :: {str : [(str, int)]}
         adj_dict[x] := out edges of x with the their width
@@ -230,6 +230,7 @@ class Design(NamedIDObject):
         self._p_constraints = ValidContainer()
         self._cg = dict()
         self._opt = dict()
+        self._pinned_comps = pinned_comps
 
         self._max_degree = 0
 
@@ -271,6 +272,7 @@ class Design(NamedIDObject):
 
         #need to generate positons for each component
         self._gen_pos()
+        
 
     def _gen_pos(self):
         #reset constraints
@@ -307,7 +309,10 @@ class Design(NamedIDObject):
     @property
     def constraints(self):
         '''returns all hard constraints'''
-        return z3.And(self.p_constraints, self.g_constraints, self.o_constraints)
+        if self._pinned_comps:
+            return z3.And(self.p_constraints, self.g_constraints, self.o_constraints, self.pinned_constraints)
+        else:
+            return z3.And(self.p_constraints, self.g_constraints, self.o_constraints)
 
     @property
     def max_degree(self):
@@ -344,6 +349,18 @@ class Design(NamedIDObject):
             self._p_constraints.data = z3.And(*cl)
 
         return self._p_constraints.data
+
+    @property
+    def pinned_constraints(self):
+        if self._pinned_comps:
+            c = []
+            for src_name in self._pinned_comps:
+                c.append(self._comps[src_name].pos.x == 2**self._pinned_comps[src_name][0])
+                c.append(self._comps[src_name].pos.y == 2**self._pinned_comps[src_name][1])
+            return z3.And(c)
+        else:
+            return []    
+            
 
     def _reset_p_constraints(self):
         self._p_constraints.mark_invalid()
