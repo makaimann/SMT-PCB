@@ -10,12 +10,28 @@ def tiny_test(dims=(3,3), debug_prints=True):
         place 4 nodes on a 3x3 fabric [with length 1 wires] 
     '''
     adj = {'n1' : [('n2', 1),('n3',1)], 'n2' : [('n4',1)], 'n3' : [('n4',1)], 'n4' : {}}
-    pinned_comps = {'n1' : (0,0)}
+    pinned_comps = {'n1' : [(1,2), (None,None)], 'n2' : [(1,1), (None,None)], 'n3' : [(1,1), (None,None)], 'n4' : [(1,1), (None, None)]}
     fab = Fabric(dims, wire_lengths={1})
 
-    des = Design(adj, fab, position.Unpacked2H, pinned_comps)
+    des = Design(adj, fab, position.Unpacked2H)
     des.add_constraint_generator('nearest_neighbor', constraints.nearest_neighbor_fast)
     des.add_constraint_generator('distinct', constraints.distinct)
+
+    sol = run_test(des, debug_prints)
+    return des, fab, sol
+
+def tiny_rect_test(dims=(3,3), debug_prints=True):
+    ''' 
+        place 4 nodes on a 3x3 fabric [with length 1 wires] 
+    '''
+    adj = {'n1' : [('n2', 1),('n3',1)], 'n2' : [('n4',1)], 'n3' : [('n4',1)], 'n4' : {}}
+    pinned_comps = {'n1' : [(1,2), (None,None)], 'n2' : [(1,1), (None,None)], 'n3' : [(1,1), (None,None)], 'n4' : [(1,1), (None, None)]}
+    
+    fab = Fabric(dims, wire_lengths={1})
+
+    des = Design(adj, fab, position.IntXY, pinned_comps)
+    des.add_constraint_generator('rect_neighborhood', constraints.rect_neighborhood(1))
+    des.add_constraint_generator('no_overlap', constraints.no_overlap)
 
     sol = run_test(des, debug_prints)
     return des, fab, sol

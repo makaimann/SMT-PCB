@@ -110,7 +110,7 @@ class Fabric:
 
 
 class Component(NamedIDObject):
-    def __init__(self, name, inputs=(), outputs=(), pos=None):
+    def __init__(self, name, width=None, height=None, inputs=(), outputs=(), pos=None):
         super().__init__(name)
         self._pos = pos
         self._inputs = set(inputs)
@@ -121,6 +121,8 @@ class Component(NamedIDObject):
         self._in_degree = 0
         self._out_degree = 0
         self._degree = 0
+        self._width = width
+        self._height = height
 
 
     @property
@@ -147,6 +149,14 @@ class Component(NamedIDObject):
     @property
     def pos(self):
         return self._pos
+
+    @property
+    def width(self):
+        return self._width
+
+    @property
+    def height(self):
+        return self._height
 
     @property
     def in_degree(self):
@@ -252,7 +262,10 @@ class Design(NamedIDObject):
                 raise TypeError('component_graph must be a dictionary of str to [(str, int)]')
 
             if src_name not in self._comps:
-                self._comps[src_name] = Component(src_name)
+                if self._pinned_comps:
+                    self._comps[src_name] = Component(src_name, self._pinned_comps[src_name][0][0], self._pinned_comps[src_name][0][1])
+                else:
+                    self._comps[src_name] = Component(src_name)
             src = self._comps[src_name]
 
             for pair in adj_list:
@@ -265,7 +278,11 @@ class Design(NamedIDObject):
                     raise TypeError('component_graph must be a dictionary of str to [(str, int)]')
 
                 if dst_name not in self._comps:
-                    self._comps[dst_name] = Component(dst_name)
+                    if self._pinned_comps:
+                        self._comps[dst_name] = Component(dst_name, self._pinned_comps[dst_name][0][0], self._pinned_comps[dst_name][0][1])
+                    else:
+                        self._comps[dst_name] = Component(dst_name)
+
                 dst = self._comps[dst_name]
 
                 self._wires[(src_name, dst_name)] = Wire(src, dst, width)
@@ -278,7 +295,10 @@ class Design(NamedIDObject):
         #reset constraints
         self._reset_constraints()
         for c in self.components:
-            c.pos = self._position_type(c.name, self.fabric)
+            if c.width and c.height:
+                c.pos = self._position_type(c.name, self.fabric, c.width, c.height)
+            else:
+                c.pos = self._position_type(c.name, self.fabric)
             # also find maximum (in or out) degree
             if self._max_degree < c.degree:
                 self._max_degree = c.degree
@@ -350,20 +370,21 @@ class Design(NamedIDObject):
 
         return self._p_constraints.data
 
+    def _reset_p_constraints(self):
+        self._p_constraints.mark_invalid()
+
     @property
     def pinned_constraints(self):
         if self._pinned_comps:
             c = []
             for src_name in self._pinned_comps:
-                c.append(self._comps[src_name].pos.x == 2**self._pinned_comps[src_name][0])
-                c.append(self._comps[src_name].pos.y == 2**self._pinned_comps[src_name][1])
+                if self._pinned_comps[src_name][1][0] is not None and self._pinned_comps[src_name][1][1] is not None:
+                    c.append(self._comps[src_name].pos.x == self._position_type.pos_repr(self._pinned_comps[src_name][1][0]))
+                    c.append(self._comps[src_name].pos.y == self._position_type.pos_repr(self._pinned_comps[src_name][1][1]))
             return z3.And(c)
         else:
             return []    
             
-
-    def _reset_p_constraints(self):
-        self._p_constraints.mark_invalid()
     '''
         -----------------------------------------------------------------------
         General constraints related stuff

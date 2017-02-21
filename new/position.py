@@ -101,6 +101,12 @@ class Base2H(PositionBase):
     def __init__(self, name, fabric):
         super().__init__(name, fabric)
 
+    @staticmethod
+    def pos_repr(n):
+        ''' returns the representation of an x or y coordinate in this encoding'''
+        return 2**n
+        
+
     def delta_x(self, other):
         delta_x = z3.BitVec(self.name+'-'+other.name+'_delta_x', self.fabric.cols)
         constraint = z3.Or(self.x == other.x << delta_x, other.x == self.x << delta_x)
@@ -195,6 +201,11 @@ class BVXY(PositionBase):
             self._y = z3.BitVec(self.name + '_y', self.fabric.rows.bit_length())
             self._is_y_pow2 = False
 
+    @staticmethod
+    def pos_repr(n):
+        ''' returns the representation of an x or y coordinate in this encoding'''
+        return n
+
     def delta_x(self, other):
         return [], zu.absolute_value(self.x - other.x)
 
@@ -243,3 +254,55 @@ class BVXY(PositionBase):
     def get_coordinates(self, model):
         return (model.eval(self.x).as_long(), model.eval(self.y).as_long())
 
+
+class IntXY(PositionBase):
+    def __init__(self, name, fabric, width, height):
+        super().__init__(name, fabric)
+        self._x = z3.Int(name + '_x')
+        self._y = z3.Int(name + '_y')
+        self._width = width
+        self._height = height
+
+    @staticmethod
+    def pos_repr(n):
+        ''' returns the representation of an x or y coordinate in this encoding'''
+        return n
+
+    def delta_x(self, other):
+        return [], self.x - other.x
+
+    def delta_y(self, other):
+        return [], self.y - other.y
+
+    #Note: These delta's are NOT absolute value
+    def delta_x_fun(self, other):
+        def delta_fun(constant):
+            return z3.And(self.x - other.x < other._width + constant,
+                          other.x - self.x < self._width + constant)
+        return delta_fun
+
+    def delta_y_fun(self, other):
+        def delta_fun(constant):
+            return z3.And(self.y - other.y < other._height + constant,
+                          other.y - self.y < self._height + constant)
+        return delta_fun
+
+    @property
+    def flat(self):
+        raise ValueError('flat does not make sense with position.IntXY')
+
+    @property
+    def x(self):
+        return self._x
+
+    @property
+    def y(self):
+        return self._y
+
+    @property
+    def invariants(self):
+        return z3.And(self._x >= 0, self._x + self._width <= self.fabric.cols,
+                      self._y >= 0, self._y + self._height <= self.fabric.rows)
+
+    def get_coordinates(self, model):
+        return (model.eval(self.x).as_long(), model.eval(self.y).as_long())

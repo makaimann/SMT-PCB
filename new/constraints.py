@@ -125,6 +125,28 @@ def in_neighborhood(num_hops):
     return neighborhood
 
 
+def rect_neighborhood(num_hops):
+    '''
+    in_neighborhood(1) should equal nearest_neighbor_fast
+    '''
+
+    if num_hops < 1:
+        raise ValueError('num_hops must be >= 1, recieved {}'.format(num_hops))
+
+    def neighborhood(components, wires, fabric):
+        constraints = []
+        for w in wires:
+            src = w.src
+            dst = w.dst
+
+            delta_x = src.pos.delta_x_fun(dst.pos)
+            delta_y = src.pos.delta_y_fun(dst.pos)
+            
+            constraints.append(delta_x(num_hops))
+            constraints.append(delta_y(num_hops))
+        return z3.And(constraints)
+    return neighborhood
+
 
 def distinct(components, wires, fabric):
     return z3.Distinct(*(c.pos.flat for c in components))
@@ -133,4 +155,15 @@ def distinct(components, wires, fabric):
 def opt_distinct(components, wires, fabric):
     ''' Distinct for Optimizer -- because needs to be simplified for z3.Optimize()'''
     return z3.simplify(z3.Distinct(*(c.pos.flat for c in components)), ':blast-distinct', True)
+
+def no_overlap(components, wires, fabric):
+    comps = list(components)
+    c = []
+    for i in range(0, len(comps)):
+        for j in range(i+1, len(comps)):
+            c.append(z3.Or(comps[i].pos.x - comps[j].pos.x >= comps[j].width,
+                           comps[j].pos.x - comps[i].pos.x >= comps[i].width,
+                           comps[i].pos.y - comps[j].pos.y >= comps[j].height,
+                           comps[j].pos.y - comps[i].pos.y >= comps[i].height))
+    return z3.And(c)
 

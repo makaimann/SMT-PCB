@@ -24,9 +24,9 @@ class Placer:
         else:
             raise NotImplementedError('Parsing {} files is not yet supported'.format(file_extension))
 
-    def place(self, adj, neighborhood=None, limit=5):
+    def place(self, adj, pinned_comps=None, neighborhood=None, limit=5):
         print('Creating design...')
-        d = design.Design(adj, self.fabric, position.Packed2H, 'Design1')
+        d = design.Design(adj, self.fabric, position.Packed2H, pinned_comps, 'Design1')
         if not neighborhood:
             neighborhood = int(math.ceil(d.max_degree/4))
         print('Design has max degree = {}'.format(d.max_degree))
