@@ -26,12 +26,12 @@ class Placer:
 
     def place(self, adj, pinned_comps=None, neighborhood=None, limit=5):
         print('Creating design...')
-        d = design.Design(adj, self.fabric, position.Packed2H, pinned_comps, 'Design1')
+        d = design.Design(adj, self.fabric, position.IntXY, pinned_comps, 'Design1')
         if not neighborhood:
             neighborhood = int(math.ceil(d.max_degree/4))
         print('Design has max degree = {}'.format(d.max_degree))
-        d.add_constraint_generator('neighborhood', constraints.in_neighborhood(neighborhood))
-        d.add_constraint_generator('distinct', constraints.distinct)
+        d.add_constraint_generator('neighborhood', constraints.rect_neighborhood(neighborhood))
+        d.add_constraint_generator('distinct', constraints.no_overlap)
         print('Initializing solver and adding constraints...')
         solver = z3.Solver()
         solver.add(d.constraints)
@@ -44,7 +44,7 @@ class Placer:
             print('Resetting and trying with neighborhood = {}'.format(neighborhood))
             solver.reset()
             d.remove_constraint_generator('neighborhood')
-            d.add_constraint_generator('neighborhood', constraints.in_neighborhood(neighborhood))
+            d.add_constraint_generator('neighborhood', constraints.rect_neighborhood(neighborhood))
             solver.add(d.constraints)
             counter += 1
             result = solver.check()

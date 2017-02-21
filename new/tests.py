@@ -4,6 +4,7 @@ import constraints
 from design import Design, Fabric
 import position
 from collections import defaultdict
+import placer
 
 def tiny_test(dims=(3,3), debug_prints=True):
     ''' 
@@ -33,12 +34,11 @@ def tiny_rect_test(dims=(3,3), debug_prints=True):
     
     fab = Fabric(dims, wire_lengths={1})
 
-    des = Design(adj, fab, position.IntXY, comps_data)
-    des.add_constraint_generator('rect_neighborhood', constraints.rect_neighborhood(1))
-    des.add_constraint_generator('no_overlap', constraints.no_overlap)
+    p = placer.Placer(fab)
 
-    sol = run_test(des, debug_prints)
-    return des, fab, sol
+    model, des = p.place(adj, comps_data)
+
+    return des, model
 
 
 def tiny_opt_test(dims=(4,4), debug_prints=True):
