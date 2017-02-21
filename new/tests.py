@@ -10,7 +10,7 @@ def tiny_test(dims=(3,3), debug_prints=True):
         place 4 nodes on a 3x3 fabric [with length 1 wires] 
     '''
     adj = {'n1' : [('n2', 1),('n3',1)], 'n2' : [('n4',1)], 'n3' : [('n4',1)], 'n4' : {}}
-    pinned_comps = {'n1' : [(1,2), (None,None)], 'n2' : [(1,1), (None,None)], 'n3' : [(1,1), (None,None)], 'n4' : [(1,1), (None, None)]}
+    comps_data = {'n1' : [(1,2), (None,None)], 'n2' : [(1,1), (None,None)], 'n3' : [(1,1), (None,None)], 'n4' : [(1,1), (None, None)]}
     fab = Fabric(dims, wire_lengths={1})
 
     des = Design(adj, fab, position.Unpacked2H)
@@ -23,13 +23,17 @@ def tiny_test(dims=(3,3), debug_prints=True):
 def tiny_rect_test(dims=(3,3), debug_prints=True):
     ''' 
         place 4 nodes on a 3x3 fabric [with length 1 wires] 
+
+    Format:
+        adj = {'comp_name' : [('comp_name2', wire_width), ...]} note: wire_width currently not used
+        comps_data = {'comp_name' : [(width, height), (x position, y position)]}  --set x/y position to None if free component
     '''
     adj = {'n1' : [('n2', 1),('n3',1)], 'n2' : [('n4',1)], 'n3' : [('n4',1)], 'n4' : {}}
-    pinned_comps = {'n1' : [(1,2), (None,None)], 'n2' : [(1,1), (None,None)], 'n3' : [(1,1), (None,None)], 'n4' : [(1,1), (None, None)]}
+    comps_data = {'n1' : [(1,2), (None,None)], 'n2' : [(1,1), (None,None)], 'n3' : [(1,1), (None,None)], 'n4' : [(1,1), (None, None)]}
     
     fab = Fabric(dims, wire_lengths={1})
 
-    des = Design(adj, fab, position.IntXY, pinned_comps)
+    des = Design(adj, fab, position.IntXY, comps_data)
     des.add_constraint_generator('rect_neighborhood', constraints.rect_neighborhood(1))
     des.add_constraint_generator('no_overlap', constraints.no_overlap)
 
