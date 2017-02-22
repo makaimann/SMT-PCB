@@ -1,0 +1,6 @@
+actdiag
+blockdiag
+seqdiag
+sphinx>=1.1.2
+sphinxcontrib-actdiag
+sphinxcontrib-blockdiag
