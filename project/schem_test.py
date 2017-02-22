@@ -23,7 +23,7 @@ mod_dict = {}
 count = 1
 while count < Ndev:
     part = Footprint.random()
-    if part.boundingBox.width > 10 or part.boundingBox.height > 10:
+    if part.boundingBox.width > 15 or part.boundingBox.height > 15:
         continue
     name = 'U'+str(count)
     count = count+1
@@ -81,10 +81,17 @@ for key,val in mod_dict.items():
     height = int(math.ceil(float(val.boundingBox.height) / dy))
     comp_dict[key] = [(width,height), (None, None)]
 
+# determine board dimensions
+width = int(math.ceil(50.0/dx))
+height = int(math.ceil(50.0/dy))
+dims = (width, height)
+
 # print structure for SMT-PNR
 with open('in.dict', 'w') as f:
+    f.write(repr(dims)+'\n')
     f.write(repr(graph_struct)+'\n')
     f.write(repr(comp_dict)+'\n')
+    f.write(repr((dx,dy))+'\n')
 
 # put the parts on the board and save
 fname = 'test.kicad_pcb'

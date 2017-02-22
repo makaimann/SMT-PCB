@@ -19,7 +19,7 @@ def main():
     print_mesh(model, design)
     write_placement(model, design)
 
-def place_rects(dims=(20,20), infile='in.dict'):
+def place_rects(infile='in.dict'):
     ''' 
         place devices on a fabric, treating them as rectangles with varying sizes.
 
@@ -27,6 +27,9 @@ def place_rects(dims=(20,20), infile='in.dict'):
         adj = {'comp_name' : [('comp_name2', wire_width), ...]} note: wire_width currently not used
         comps_data = {'comp_name' : [(width, height), (x position, y position)]}  --set x/y position to None if free component
     '''
+
+    # read in the problem dimensions
+    dims = get_dims(infile)
 
     # read in the adjacency matrix
     adj_dict = get_adj_dict(infile)
@@ -77,16 +80,22 @@ def write_placement(model, design, outfile='out.dict'):
         mesh[(x,y)] = name
     open(outfile,'w').write(repr([width,height,mesh]))
 
+def get_dims(infile):
+    # reads a dictionary of component connections from a file
+    lines = open(infile, 'r').read().split('\n')
+    dims = literal_eval(lines[0])
+    return dims
+
 def get_adj_dict(infile):
     # reads a dictionary of component connections from a file
     lines = open(infile, 'r').read().split('\n')
-    adj_dict = literal_eval(lines[0])
+    adj_dict = literal_eval(lines[1])
     return adj_dict
 
 def get_comp_dict(infile):
     # reads a dictionary of component sizes from a file
     lines = open(infile, 'r').read().split('\n')
-    comp_dict = literal_eval(lines[1])
+    comp_dict = literal_eval(lines[2])
     return comp_dict
 
 def get_dev_set(adj_dict):

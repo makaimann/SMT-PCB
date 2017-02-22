@@ -26,9 +26,9 @@ width, height, mesh = literal_eval(open('out.dict','r').read())
 # load board
 pcb = Board.load('test.kicad_pcb')
 
-# TODO: don't make dx and dy hard-coded
-dx = 2.5
-dy = 2.5
+# TODO: clean up interface for reading dx and dy variables
+line4 = open('in.dict').read().split('\n')[3]
+dx, dy = literal_eval(line4)
 
 # try to center components on board
 xmid = 0.5*dx*width
