@@ -10,7 +10,9 @@ import re
 import random
 from pyparsing import OneOrMore, nestedExpr
 from kicad.pcbnew.module import Module
+from kicad.pcbnew.board import Board 
 import pcbnew
+import math
 
 class PcbParser(object):
     @staticmethod
@@ -152,9 +154,109 @@ class BoardTools(object):
     
         return net_dict
 
-class Footprint(object):
-    @staticmethod
-    def load(lib, part):
+class PcbDesign(object):
+    def __init__(self, fname, dx=2.5, dy=2.5, width=25.0, height=25.0, smt_file_in='in.dict'):
+        self.fname = fname
+        self.comp_dict = {}
+        self.design_dict = {}
+        self.net_dict = {}
+        self.dx = dx
+        self.dy = dy
+        self.width = width
+        self.height = height
+        self.smt_file_in = smt_file_in
+
+    def add(self, component):
+        self.comp_dict[component.name] = component
+        self.design_dict[component.name] = {}
+        component.parent = self
+
+    def wire(self, net_name, *args):
+        if net_name not in self.net_dict:
+            self.net_dict[net_name] = set()
+        for arg in args:
+            arg.wire(net_name)
+
+    def compile(self):
+        # add all components to the board and save the result
+        pcb = Board()
+        for comp in self.comp_dict.values():
+            pcb.add(comp.module) 
+        pcb.save(self.fname)
+
+        # add all net connections to the board, since this cannot 
+        # be accomplished through pcbnew at present
+        BoardTools.add_nets(self.design_dict, self.fname, self.fname)
+        
+        # write input file for SMT solver
+        self.write_smt_input()
+
+    def get_graph_struct(self):
+        # create a list of lists of connected components
+        adj_list = []
+        for net_name, comp_set in self.net_dict.items():
+            adj_list.append([])
+            for comp_name in comp_set:
+                adj_list[-1].append(comp_name)
+        
+        # generate graph_struct needed by SMT solver
+        graph_struct = {}
+        for adj in adj_list:
+            first = adj[0]
+            rest = [(x,1) for x in adj[1:]]
+            if first not in graph_struct:
+                graph_struct[first] = rest
+            else:
+                graph_struct[first].extend(rest)
+
+        return graph_struct
+
+    def get_place_dict(self):
+        place_dict = {}
+        for comp_name, comp in self.comp_dict.items():
+            width = int(math.ceil(float(comp.width)/self.dx))
+            height = int(math.ceil(float(comp.height)/self.dy))
+            place_dict[comp_name] = [(width,height), (None, None)]
+        return place_dict
+
+    @property 
+    def place_dims(self):
+        width = int(math.ceil(float(self.width)/self.dx))
+        height = int(math.ceil(float(self.height)/self.dy))
+        return (width, height)
+
+    def write_smt_input(self):
+        with open(self.smt_file_in, 'w') as f:
+            f.write(repr(self.place_dims)+'\n')
+            f.write(repr(self.get_graph_struct())+'\n')
+            f.write(repr(self.get_place_dict())+'\n')
+            f.write(repr((self.dx, self.dy))+'\n')
+
+class PcbPad(object):
+    def __init__(self, pad):
+        self.pad = pad
+        self.name = self.pad.name
+
+    def wire(self, net_name):
+        comp = self.parent
+        pcb = comp.parent
+        pcb.design_dict[comp.name][self.name] = net_name
+        pcb.net_dict[net_name].add(comp.name)
+
+class PcbComponent(object):
+    def __init__(self, name, lib, part):
+        # instantiate the part
+        self.load_module(lib, part)
+
+        # name the part
+        self.name = name
+        self.module.reference = name
+        
+        # fill up the dictionary defining component pads
+        self.pad_dict = {}
+        self.populate_pads()
+
+    def load_module(self, lib, part):
         KISYSMOD = os.environ['KISYSMOD']
         file_ext = 'pretty'
 
@@ -162,22 +264,23 @@ class Footprint(object):
         src_type = pcbnew.IO_MGR.GuessPluginTypeFromLibPath(src_libpath)
         src_plugin = pcbnew.IO_MGR.PluginFind(src_type)
 
-        return Module.wrap(src_plugin.FootprintLoad(src_libpath, part))
+        self.module = Module.wrap(src_plugin.FootprintLoad(src_libpath, part))
 
-    @staticmethod
-    def random():
-        KISYSMOD = os.environ['KISYSMOD']
-        
-        mod_list = ['Capacitors_THT.pretty',
-                    'Diodes_THT.pretty', 
-                    'Inductors_THT.pretty',
-                    'Resistors_THT.pretty']
+    def populate_pads(self):
+        for pad in self.module.pads:
+            self.pad_dict[pad.name] = PcbPad(pad)
+            self.pad_dict[pad.name].parent = self
 
-        lib = random.choice(mod_list)
-        lib_full = os.path.join(KISYSMOD, lib)
-        part = random.choice(os.listdir(lib_full))
+    @property
+    def width(self):
+        return self.module.boundingBox.width
 
-        lib = os.path.splitext(lib)[0]
-        part = os.path.splitext(part)[0]
+    @property
+    def height(self):
+        return self.module.boundingBox.height
 
-        return Footprint.load(lib, part)
+    @property
+    def pads(self):
+        for pad in self.pad_dict.values():
+            yield pad
+
