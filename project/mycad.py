@@ -14,6 +14,14 @@ from kicad.pcbnew.board import Board
 import pcbnew
 import math
 
+def UniqueName(prefix, max_count=100):
+    global current_design
+    for count in range(1, max_count+1):
+        name = prefix + str(count)
+        if name not in current_design:
+            break
+    return name
+
 class PcbParser(object):
     @staticmethod
     def formatFlat(s):
@@ -155,46 +163,86 @@ class BoardTools(object):
         return net_dict
 
 class PcbDesign(object):
-    def __init__(self, fname, dx=2.5, dy=2.5, width=25.0, height=25.0, smt_file_in='in.dict'):
+    def __init__(self, fname, dx=2.5, dy=2.5, width=25.0, height=25.0, smt_file_in='in.dict', set_current=True):
+        global current_design
+
         self.fname = fname
         self.comp_dict = {}
-        self.design_dict = {}
-        self.net_dict = {}
         self.dx = dx
         self.dy = dy
         self.width = width
         self.height = height
         self.smt_file_in = smt_file_in
 
+        if set_current:
+            current_design = self
+
+    def __contains__(self, item):
+        return item in self.comp_dict
+
+    def __iter__(self):
+        for comp in self.comp_dict.values():
+            yield comp
+    
+    def __setitem__(self, key, val):
+        self.comp_dict[key] = val
+
+    def __getitem__(self, key):
+        return self.comp_dict[key]
+
     def add(self, component):
-        self.comp_dict[component.name] = component
-        self.design_dict[component.name] = {}
+        self[component.name] = component
         component.parent = self
 
     def wire(self, net_name, *args):
-        if net_name not in self.net_dict:
-            self.net_dict[net_name] = set()
         for arg in args:
             arg.wire(net_name)
 
     def compile(self):
-        # add all components to the board and save the result
+        # Create empty PCB
         pcb = Board()
-        for comp in self.comp_dict.values():
+
+        # add all components to the board
+        for comp in self:
             pcb.add(comp.module) 
+
+        # save PCB file without connectivity information
         pcb.save(self.fname)
 
         # add all net connections to the board, since this cannot 
         # be accomplished through pcbnew at present
-        BoardTools.add_nets(self.design_dict, self.fname, self.fname)
+        BoardTools.add_nets(self.get_design_dict(), self.fname, self.fname)
         
         # write input file for SMT solver
         self.write_smt_input()
 
+    def get_design_dict(self):
+        design_dict = {}
+        for comp in self:
+            if comp.name not in design_dict:
+                design_dict[comp.name] = {}
+            for pad in comp:
+                if pad.net_name is not None:
+                    design_dict[comp.name][pad.name] = pad.net_name
+        return design_dict
+
+    def get_net_dict(self):
+        net_dict = {}
+        for comp in self:
+            for pad in comp:
+                if pad.net_name is not None:
+                    if pad.net_name not in net_dict:    
+                        net_dict[pad.net_name] = set()
+                    net_dict[pad.net_name].add(comp.name)
+        return net_dict
+
     def get_graph_struct(self):
+        # generate dictionary mapping each net to a set of connected components
+        net_dict = self.get_net_dict()
+
         # create a list of lists of connected components
         adj_list = []
-        for net_name, comp_set in self.net_dict.items():
+        for net_name, comp_set in net_dict.items():
             adj_list.append([])
             for comp_name in comp_set:
                 adj_list[-1].append(comp_name)
@@ -213,10 +261,10 @@ class PcbDesign(object):
 
     def get_place_dict(self):
         place_dict = {}
-        for comp_name, comp in self.comp_dict.items():
+        for comp in self:
             width = int(math.ceil(float(comp.width)/self.dx))
             height = int(math.ceil(float(comp.height)/self.dy))
-            place_dict[comp_name] = [(width,height), (None, None)]
+            place_dict[comp.name] = [(width,height), (None, None)]
         return place_dict
 
     @property 
@@ -236,15 +284,15 @@ class PcbPad(object):
     def __init__(self, pad):
         self.pad = pad
         self.name = self.pad.name
+        self.net_name = None
 
     def wire(self, net_name):
-        comp = self.parent
-        pcb = comp.parent
-        pcb.design_dict[comp.name][self.name] = net_name
-        pcb.net_dict[net_name].add(comp.name)
+        self.net_name = net_name
 
 class PcbComponent(object):
     def __init__(self, name, lib, part):
+        global current_design
+
         # instantiate the part
         self.load_module(lib, part)
 
@@ -255,6 +303,22 @@ class PcbComponent(object):
         # fill up the dictionary defining component pads
         self.pad_dict = {}
         self.populate_pads()
+
+        # add to current PCB design
+        current_design.add(self)
+
+    def __contains__(self, item):
+        return item in self.pad_dict
+
+    def __iter__(self):
+        for pad in self.pad_dict.values():
+            yield pad 
+
+    def __setitem__(self, key, val):
+        self.pad_dict[key] = val
+
+    def __getitem__(self, key):
+        return self.pad_dict[key]
 
     def load_module(self, lib, part):
         KISYSMOD = os.environ['KISYSMOD']
@@ -268,8 +332,8 @@ class PcbComponent(object):
 
     def populate_pads(self):
         for pad in self.module.pads:
-            self.pad_dict[pad.name] = PcbPad(pad)
-            self.pad_dict[pad.name].parent = self
+            self[pad.name] = PcbPad(pad)
+            self[pad.name].parent = self
 
     @property
     def width(self):
