@@ -28,16 +28,44 @@ For automatic placement, we will build from the [SMT-PNR project](https://github
 For autorouting, we plan to leverage existing work in the [FreeRouting project](https://github.com/nikropht/FreeRouting), a popular Java program often used in conjunction with KiCAD.  We considered using [Python-PCB](https://github.com/vygr/Python-PCB), but found that it does not support routing of surface-mount parts and does not consistently produce routes that pass all design rule checks (DRCs).
 
 ## Deliverables
-* What do you hope to show when you are done? What are your deliverables?
+1. Python Circuit Description
+ 1. Ability to instantiate any component from the KiCAD library.
+ 2. Ability to declare wires connecting pads of instantiated components.  Each wire connects two or more pads, and a given pad may only be connected to one net.
+ 3. Ability to declare routing constraints on any wire: clearance, trace width, via drill, and via diameter.
+ 4. Ability to specify a fixed position and orientation for any component.
+2. Automatic Placement
+ 1. Ability to automatically place components on the top side of the PCB such that:
+  1. All lie within the board edge.
+  2. None overlap.
+  3. The maximum distance between any two connected components is reasonable.  
+ 2. Ability to automatically rotate components in 90 degree increments as an additional degree of freedom in the autoplace routine.
+ 3. Fixed placements
+  1. Take into account the fixed placements when running the autoplacer.
+  2. Implement fixed placements with at least 10um resolution, to minimize impact on system-level mechnical tolerances.
+  3. Allow fixed placement to lie partially outside the board edge, as is commonly required for connectors.
+3. Automatic Routing
+ 1. Ability to automatically export KiCAD design to FreeRouting
+ 2. Ability to automatically invoke FreeRouting on the exported KiCAD design, assuming two layers of copper available for routing.
+ 3. Ability to read FreeRouting result back into KiCAD
+4. Other
+ 1. Ability to draw the board edge.
+ 2. Ability to center the PCB design within the title block.
+ 3. The PCB design must pass all KiCAD DRCs after automatic placement and routing.
+ 4. Demonstrate system operation by automatically generating the PCB design for [Arduino Uno](https://www.arduino.cc/en/uploads/Main/Arduino_Uno_Rev3-schematic.pdf)
 
 ## Timeline
-* What are the major tasks and results you intend to pursue?
-* How will you break them down?
-* How are you planning to divide responsibility within your team?
+
+Note: We have started work on the project already, and have completed 2.1 and 2.3.1.
 
 1. Feb 20 - Feb 26
+ * SH: Implement 1.1-1.4
+ * MM: Work on 2.2
 2. Feb 27 - Mar 5
+ * SH: Implement 2.3.2, 2.3.3, and 4.4 for preliminary presentation
+ * MM: Finish 2.2, work on preliminary presentation
 3. Mar 6 - Mar 12
-  1. Mar 7: Preliminary presentation
+ * SH: Implement 3.1 and 3.3
+ * MM: Implement 3.2
 4. Mar 13 - Mar 19
-  1. Mar 21: Final presentation 
+ * SH: Implement 4.1-4.3, work on final presentation
+ * MM: Work on final presentation
