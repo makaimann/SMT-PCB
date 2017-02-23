@@ -34,15 +34,11 @@ For autorouting, we plan to leverage existing work in the [FreeRouting project](
  3. Ability to declare routing constraints on any wire: clearance, trace width, via drill, and via diameter.
  4. Ability to specify a fixed position and orientation for any component.
 2. Automatic Placement
- 1. Ability to automatically place components on the top side of the PCB such that:
-  1. All lie within the board edge.
-  2. None overlap.
-  3. The maximum distance between any two connected components is reasonable.  
+ 1. Ability to automatically place components on the top side of the PCB such that: all lie within the board edge, none overlap, and the maximum distance between any two connected components is reasonable.  
  2. Ability to automatically rotate components in 90 degree increments as an additional degree of freedom in the autoplace routine.
- 3. Fixed placements
-  1. Take into account the fixed placements when running the autoplacer.
-  2. Implement fixed placements with at least 10um resolution, to minimize impact on system-level mechnical tolerances.
-  3. Allow fixed placement to lie partially outside the board edge, as is commonly required for connectors.
+ 3. Take into account the fixed placements when running the autoplacer.
+ 4. Implement fixed placements with at least 10um resolution, to minimize impact on system-level mechnical tolerances.
+ 5. Allow fixed placements to lie partially outside the board edge, as is commonly required for connectors.
 3. Automatic Routing
  1. Ability to automatically export KiCAD design to FreeRouting
  2. Ability to automatically invoke FreeRouting on the exported KiCAD design, assuming two layers of copper available for routing.
@@ -55,17 +51,17 @@ For autorouting, we plan to leverage existing work in the [FreeRouting project](
 
 ## Timeline
 
-Note: We have started work on the project already, and have completed 2.1 and 2.3.1.
+Note: We have started work on the project already, and have completed 2(i) and 2(iii).
 
 1. Feb 20 - Feb 26
- * SH: Implement 1.1-1.4
- * MM: Work on 2.2
+ * SH: Implement 1(i) - 1(iv)
+ * MM: Work on 2(ii)
 2. Feb 27 - Mar 5
- * SH: Implement 2.3.2, 2.3.3, and 4.4 for preliminary presentation
- * MM: Finish 2.2, work on preliminary presentation
+ * SH: Implement 2(iv), 2(v), and 4(iv) for preliminary presentation
+ * MM: Finish 2(ii), work on preliminary presentation
 3. Mar 6 - Mar 12
- * SH: Implement 3.1 and 3.3
- * MM: Implement 3.2
+ * SH: Implement 3(i) and 3(iii)
+ * MM: Implement 3(ii)
 4. Mar 13 - Mar 19
- * SH: Implement 4.1-4.3, work on final presentation
+ * SH: Implement 4(i) - 4(iii), work on final presentation
  * MM: Work on final presentation
