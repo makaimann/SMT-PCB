@@ -1,4 +1,4 @@
- # PCB Compiler
+# PCB Compiler
 
 ## Team
 * Makai Mann (makaim@stanford.edu)
