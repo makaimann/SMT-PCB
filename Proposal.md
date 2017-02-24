@@ -62,3 +62,6 @@ Note: We have started work on the project already, and have completed 2(i) and 2
 4. Mar 13 - Mar 19
  * SH: Implement 3(i) - 3(iii), work on final presentation
  * MM: Work on final presentation
+ 
+ ## References
+ 
