@@ -13,7 +13,7 @@ This work is motivated by the fact that designing PCBs is time-consuming.  The p
 In this project, we hope to significantly reduce design time by allowing users to describe circuits and their physical constraints in Python.  By doing so, users may take advantage of the language flexibility to make circuit generators, build abstraction levels, and embed debugging circuits in their designs.  Since the design will be automatically placed and routed, users can focus on the system architecture, rather than having to worry about how long it will take to physically integrate a new feature.
 
 ## Previous Work
-At the schematic level, [SKiDL](https://github.com/xesscorp/skidl) allows users to instantiate components in Python and wire them together.  The result is a netlist that can be read by a PCB design tool.  In this way, the schematic drawing step is bypassed, allowing the user to start immediately with PCB placement and routing. 
+At the schematic level, [SKiDL](https://github.com/xesscorp/skidl) allows users to instantiate PCB components in Python and define connectivity between pads.  The result is a netlist that can be read by a PCB design tool.  In this way, the schematic drawing step is bypassed, allowing the user to start immediately with PCB placement and routing. 
 
 Automated placement of components on a PCB is supported by some PCB design tools.  However, autoplacers are rarely used in practice because they tend to be slow and result in low-quality placements [3,4].  It may also be inconvenient to specify the positions of certain components, such as connectors, that have to be placed in a specific location [4,5].  
 
@@ -21,11 +21,11 @@ Automated routing of PCBs is supported by many PCB design tools.  In a typical P
 
 As we work on this project we plan to take advantage of several open source projects related to PCB design.  First, the PCB designs themselves will be stored in the *.kicad_pcb format, which is readable by the open-source program [KiCAD](http://kicad-pcb.org).  KiCAD has a large user base and extensive component library, which make it a great development platform.
 
-KiCAD has a low-level Python interface that exposes many functions to manipulate PCBs.  An effort to better document this library is currently underway by [Kevin McCoo](https://kicad.mmccoo.com).  We also plan to make use of the higher-level PCB functions available in a [fork of kicad-python](https://github.com/hyOzd/kicad-python).  
+KiCAD has a low-level Python interface that exposes many functions to manipulate PCB designs.  An effort to better document this library is currently underway by [Kevin McCoo](https://kicad.mmccoo.com).  We also plan to make use of the higher-level PCB functions available in a [fork of kicad-python](https://github.com/hyOzd/kicad-python).  
 
 For automatic placement, we will build from the [SMT-PNR project](https://github.com/cdonovick/SMT-PNR) current underway at Stanford.  We initially tested the automatic placer built into KiCAD, but found that it was slow and did not produce a useable placement.  The SMT-PNR placer is intended primarily for FPGAs, but early experiments have suggested that it could perform well for PCB placement, given several extensions.
 
-For autorouting, we plan to leverage existing work in the [FreeRouting project](https://github.com/nikropht/FreeRouting), a popular Java program often used in conjunction with KiCAD.  We considered using [Python-PCB](https://github.com/vygr/Python-PCB), but found that it does not support routing of surface-mount parts and does not consistently produce routes that pass all design rule checks (DRCs).
+For autorouting, we plan to leverage existing work in the [FreeRouting project](https://github.com/nikropht/FreeRouting), a popular Java program often used in conjunction with KiCAD.  We considered using [Python-PCB](https://github.com/vygr/Python-PCB), but found that it did not support routing of surface-mount parts and did not consistently produce routes that passed design rule checks (DRCs).
 
 ## Deliverables
 1. Python Circuit Description
@@ -36,7 +36,7 @@ For autorouting, we plan to leverage existing work in the [FreeRouting project](
 2. Automatic Placement
  1. Ability to automatically place components on the top side of the PCB such that: all lie within the board edge, none overlap, and the maximum distance between any two connected components is reasonable.  
  2. Ability to automatically rotate components in 90 degree increments as an additional degree of freedom in the autoplace routine.
- 3. Take into account the fixed placements when running the autoplacer.
+ 3. Fixed placements are taken into account by autoplacer.
  4. Implement fixed placements with at least 10um resolution, to minimize impact on system-level mechnical tolerances.
  5. Allow fixed placements to lie partially outside the board edge, as is commonly required for connectors.
  6. Use pad-level connectivity information in placement
@@ -54,10 +54,10 @@ Note: We have started work on the project already, and have completed 2(i) and 2
  * SH: Implement 1(i) - 1(iv)
  * MM: Work on 2(ii)
 2. Feb 27 - Mar 5
- * SH: Implement 2(iv) and 2(v) for preliminary presentation
+ * SH: Implement 2(iv) and 2(v), work on preliminary presentation
  * MM: Finish 2(ii), work on preliminary presentation
 3. Mar 6 - Mar 12
- * SH: Implement 3(iv) for presentation
+ * SH: Implement 3(iv)
  * MM: Implement 2(vi)
 4. Mar 13 - Mar 19
  * SH: Implement 3(i) - 3(iii), work on final presentation
