@@ -39,11 +39,8 @@ For autorouting, we plan to leverage existing work in the [FreeRouting project](
  3. Take into account the fixed placements when running the autoplacer.
  4. Implement fixed placements with at least 10um resolution, to minimize impact on system-level mechnical tolerances.
  5. Allow fixed placements to lie partially outside the board edge, as is commonly required for connectors.
-3. Automatic Routing
- 1. Ability to automatically export KiCAD design to FreeRouting
- 2. Ability to automatically invoke FreeRouting on the exported KiCAD design, assuming two layers of copper available for routing.
- 3. Ability to read FreeRouting result back into KiCAD
-4. Other
+ 6. Use pad-level connectivity information in placement
+3. Other
  1. Ability to draw the board edge.
  2. Ability to center the PCB design within the title block.
  3. The PCB design must pass all KiCAD DRCs after automatic placement and routing.
@@ -57,11 +54,11 @@ Note: We have started work on the project already, and have completed 2(i) and 2
  * SH: Implement 1(i) - 1(iv)
  * MM: Work on 2(ii)
 2. Feb 27 - Mar 5
- * SH: Implement 2(iv), 2(v), and 4(iv) for preliminary presentation
+ * SH: Implement 2(iv) and 2(v) for preliminary presentation
  * MM: Finish 2(ii), work on preliminary presentation
 3. Mar 6 - Mar 12
- * SH: Implement 3(i) and 3(iii)
- * MM: Implement 3(ii)
+ * SH: Implement 3(iv) for presentation
+ * MM: Implement 2(vi)
 4. Mar 13 - Mar 19
- * SH: Implement 4(i) - 4(iii), work on final presentation
+ * SH: Implement 3(i) - 3(iii), work on final presentation
  * MM: Work on final presentation
