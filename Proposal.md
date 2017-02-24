@@ -1,4 +1,4 @@
-# Compiling Circuit Descriptions to Manufacturable PCBs
+# Compiling Manufacturable PCBs from Circuit Descriptions
 
 ## Team
 * Makai Mann (makaim@stanford.edu)
