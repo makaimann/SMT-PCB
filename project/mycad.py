@@ -13,14 +13,31 @@ from kicad.pcbnew.module import Module
 from kicad.pcbnew.board import Board 
 import pcbnew
 import math
+from skidl import Part, TEMPLATE
 
-def UniqueName(prefix, max_count=100):
-    global current_design
-    for count in range(1, max_count+1):
-        name = prefix + str(count)
-        if name not in current_design:
-            break
-    return name
+class PinMapping(object):
+    def __init__(self, lib, name):
+        self.lib = lib
+        self.name = name
+        self.part = Part(lib, name)
+        self.build_alias_table()
+
+    def __getitem__(self, key):
+        return self.alias_table[key]
+
+    def __setitem__(self, key, val):
+        self.alias_table[key] = val
+
+    def __contains__(self, item):
+        return item in self.alias_table
+
+    def items(self):
+        return self.alias_table.items()
+    
+    def build_alias_table(self):
+        self.alias_table = {}
+        for pin in self.part.pins:
+            self[pin.name] = pin.num
 
 class PcbParser(object):
     @staticmethod
@@ -163,9 +180,8 @@ class BoardTools(object):
         return net_dict
 
 class PcbDesign(object):
-    def __init__(self, fname, dx=2.5, dy=2.5, width=25.0, height=25.0, smt_file_in='in.dict', set_current=True):
-        global current_design
-
+    def __init__(self, fname, dx=1.0, dy=1.0, width=25.0, height=25.0, 
+                 smt_file_in='in.dict', refdes_max_count=1000):
         self.fname = fname
         self.comp_dict = {}
         self.dx = dx
@@ -173,9 +189,7 @@ class PcbDesign(object):
         self.width = width
         self.height = height
         self.smt_file_in = smt_file_in
-
-        if set_current:
-            current_design = self
+        self.refdes_max_count = refdes_max_count
 
     def __contains__(self, item):
         return item in self.comp_dict
@@ -191,8 +205,16 @@ class PcbDesign(object):
         return self.comp_dict[key]
 
     def add(self, component):
-        self[component.name] = component
         component.parent = self
+        component.name = self.nextRefdes(component.prefix)
+        self[component.name] = component
+
+    def nextRefdes(self, prefix):
+        for count in range(1, self.refdes_max_count+1):
+            name = prefix + str(count)
+            if name not in self:
+                break
+        return name
 
     def wire(self, net_name, *args):
         for arg in args:
@@ -283,29 +305,38 @@ class PcbDesign(object):
 class PcbPad(object):
     def __init__(self, pad):
         self.pad = pad
-        self.name = self.pad.name
         self.net_name = None
 
     def wire(self, net_name):
         self.net_name = net_name
 
-class PcbComponent(object):
-    def __init__(self, name, lib, part):
-        global current_design
+    @property
+    def name(self):
+        return self.pad.name
 
+class PcbComponent(object):
+    def __init__(self, lib, part):
         # instantiate the part
         self.load_module(lib, part)
 
-        # name the part
-        self.name = name
-        self.module.reference = name
-        
         # fill up the dictionary defining component pads
         self.pad_dict = {}
         self.populate_pads()
 
-        # add to current PCB design
-        current_design.add(self)
+    def load_module(self, lib, part):
+        KICAD_PATH = os.environ['KICAD_PATH']
+        file_ext = 'pretty'
+
+        src_libpath = os.path.join(KICAD_PATH, 'modules', lib + '.' + file_ext)
+        src_type = pcbnew.IO_MGR.GuessPluginTypeFromLibPath(src_libpath)
+        src_plugin = pcbnew.IO_MGR.PluginFind(src_type)
+
+        self.module = Module.wrap(src_plugin.FootprintLoad(src_libpath, part))
+
+    def populate_pads(self):
+        for pad in self.module.pads:
+            self[pad.name] = PcbPad(pad)
+            self[pad.name].parent = self
 
     def __contains__(self, item):
         return item in self.pad_dict
@@ -320,21 +351,6 @@ class PcbComponent(object):
     def __getitem__(self, key):
         return self.pad_dict[key]
 
-    def load_module(self, lib, part):
-        KISYSMOD = os.environ['KISYSMOD']
-        file_ext = 'pretty'
-
-        src_libpath = os.path.join(KISYSMOD, lib + '.' + file_ext)
-        src_type = pcbnew.IO_MGR.GuessPluginTypeFromLibPath(src_libpath)
-        src_plugin = pcbnew.IO_MGR.PluginFind(src_type)
-
-        self.module = Module.wrap(src_plugin.FootprintLoad(src_libpath, part))
-
-    def populate_pads(self):
-        for pad in self.module.pads:
-            self[pad.name] = PcbPad(pad)
-            self[pad.name].parent = self
-
     @property
     def width(self):
         return self.module.boundingBox.width
@@ -347,4 +363,12 @@ class PcbComponent(object):
     def pads(self):
         for pad in self.pad_dict.values():
             yield pad
+
+    @property 
+    def name(self):
+        return self.module.reference
+
+    @name.setter
+    def name(self, value):
+        self.module.reference = value
 

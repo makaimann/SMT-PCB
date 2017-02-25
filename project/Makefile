@@ -5,6 +5,6 @@ all:
 view:
 	pcbnew test.kicad_pcb &
 clean:
-	rm -f *.kicad_pcb *.net *.dict *.pro *.pyc *.pcb *.ses *.dsn *.kicad_pcb-bak
+	rm -f *.kicad_pcb *.net *.dict *.pro *.pyc *.pcb *.ses *.dsn *.kicad_pcb-bak *.log
 
 .PHONY: all explain install clean
