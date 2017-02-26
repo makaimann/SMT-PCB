@@ -220,7 +220,7 @@ class PcbDesign(object):
         for arg in args:
             arg.wire(net_name)
 
-    def compile(self):
+    def compile(self, critical_nets=None):
         # Create empty PCB
         pcb = Board()
 
@@ -236,7 +236,7 @@ class PcbDesign(object):
         BoardTools.add_nets(self.get_design_dict(), self.fname, self.fname)
         
         # write input file for SMT solver
-        self.write_smt_input()
+        self.write_smt_input(critical_nets)
 
     def get_design_dict(self):
         design_dict = {}
@@ -258,9 +258,16 @@ class PcbDesign(object):
                     net_dict[pad.net_name].add(comp.name)
         return net_dict
 
-    def get_graph_struct(self):
+    def get_graph_struct(self, critical_nets):
         # generate dictionary mapping each net to a set of connected components
         net_dict = self.get_net_dict()
+
+        # include only critical nets
+        if critical_nets is not None:
+            net_dict_keys = net_dict.keys()
+            for key in net_dict_keys:
+                if key not in critical_nets:
+                    del net_dict[key]
 
         # create a list of lists of connected components
         adj_list = []
@@ -271,13 +278,21 @@ class PcbDesign(object):
         
         # generate graph_struct needed by SMT solver
         graph_struct = {}
+        included_comps = set()
         for adj in adj_list:
             first = adj[0]
             rest = [(x,1) for x in adj[1:]]
+            for x in adj:
+                included_comps.add(x)
             if first not in graph_struct:
                 graph_struct[first] = rest
             else:
                 graph_struct[first].extend(rest)
+
+        # add back components not included earlier
+        for comp in self:
+            if comp.name not in included_comps:
+                graph_struct[comp.name]= []
 
         return graph_struct
 
@@ -295,10 +310,10 @@ class PcbDesign(object):
         height = int(math.ceil(float(self.height)/self.dy))
         return (width, height)
 
-    def write_smt_input(self):
+    def write_smt_input(self, critical_nets):
         with open(self.smt_file_in, 'w') as f:
             f.write(repr(self.place_dims)+'\n')
-            f.write(repr(self.get_graph_struct())+'\n')
+            f.write(repr(self.get_graph_struct(critical_nets))+'\n')
             f.write(repr(self.get_place_dict())+'\n')
             f.write(repr((self.dx, self.dy))+'\n')
 

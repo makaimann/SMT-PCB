@@ -28,6 +28,7 @@ def main():
     pcb.add(Diode('RESET2', '+5V'))
 
     inst_atmega328p(pcb)
+    pcb.add(SPST('RESET', 'GND'))
 
     # IO headers
     pcb.add(Header10x1('IO8', 'IO9', 'SS', 'MOSI', 'MISO', 'SCK',
@@ -51,9 +52,13 @@ def main():
  
     # Op amp control circuit
     inst_op_amps(pcb)
-  
+    
+    # Power input and LDOs
+    inst_ldos(pcb)
+ 
     # put the parts on the board and save
-    pcb.compile()
+    pcb.compile(critical_nets=['D+','D-','RD+','RD-','XT1','XT2',
+                'XTAL1','XTAL2'])
 
 def inst_usb(pcb):
     pcb.add(UsbConnB(vdd='XUSB', dm='D-', dp='D+', gnd='UGND', shield='USHIELD'))
@@ -169,6 +174,22 @@ def inst_op_amps(pcb):
     dual_op_amp.wire_op_amp('SCK', 'L13', 'L13')
     pcb.add(Resistor('L13', 'L13_R'))
     pcb.add(LED('L13_R', 'GND'))
+
+def inst_ldos(pcb):
+    # input jack
+    pcb.add(BarrelJack('PWRIN', 'GND'))
+    pcb.add(Diode('PWRIN', 'VIN'))
+    pcb.add(Capacitor('VIN', 'GND', 'CP_Elec'))
+        
+    # 5.0V LDO
+    pcb.add(LDO_5v0(vin='VIN', gnd='GND', vout='+5V'))
+    pcb.add(Capacitor('+5V', 'GND', 'CP_Elec'))
+    pcb.add(Capacitor('+5V', 'GND'))
+
+    # 3.3V LDO
+    pcb.add(NMOS(gate='GATE_CMD', source='+5V', drain='USBVCC'))
+    pcb.add(LDO_3v3(vin='+5V', gnd='GND', vout='+3V3'))
+    pcb.add(Capacitor('+3V3', 'GND'))
 
 if __name__=='__main__':
     main()

@@ -25,9 +25,62 @@ class Inductor(PcbComponent):
         self['2'].wire(n)
 
 class Capacitor(PcbComponent):
-    def __init__(self, p, n, size='0805'):
-        super(Capacitor, self).__init__('Capacitors_SMD', 'C_'+size)
+    def __init__(self, p, n, ctype='C', size=None):
+        if ctype=='C':
+            if size is None:
+                size = '0805'
+        elif ctype=='CP_Elec':
+            if size is None:
+                size = '5x5.3'
+        super(Capacitor, self).__init__('Capacitors_SMD', ctype+'_'+size)
         self.prefix = 'C'
+        self['1'].wire(p)
+        self['2'].wire(n)
+
+class NMOS(PcbComponent):
+    def __init__(self, gate, drain, source):
+        super(NMOS, self).__init__('TO_SOT_Packages_SMD', 'SOT-23')
+        self.mapping = PinMapping('transistors', 'MMBF170')
+        self.prefix = 'Q'
+        self[self.mapping['G']].wire(gate)
+        self[self.mapping['S']].wire(source)
+        self[self.mapping['D']].wire(drain)
+
+class LDO_3v3(PcbComponent):
+    def __init__(self, vin, gnd, vout, on=None):
+        super(LDO_3v3, self).__init__('TO_SOT_Packages_SMD', 'SOT-23-5')
+        self.mapping = PinMapping('regul', 'LP2985LV')
+        self.prefix = 'U'
+        self[self.mapping['VIN']].wire(vin)
+        self[self.mapping['GND']].wire(gnd)
+        self[self.mapping['VOUT']].wire(vout)
+        
+        # By default, enable the LDO
+        if on is None:
+            on = vin 
+        self[self.mapping['ON/OFF']].wire(on)
+
+class LDO_5v0(PcbComponent):
+    def __init__(self, vin, gnd, vout):
+        super(LDO_5v0, self).__init__('TO_SOT_Packages_SMD', 'SOT-223')
+        self.mapping = PinMapping('regul', 'LD1117S50TR')
+        self.prefix = 'U'
+        self[self.mapping['VI']].wire(vin)
+        self[self.mapping['GND']].wire(gnd)
+        self[self.mapping['VO']].wire(vout)
+
+class BarrelJack(PcbComponent):
+    def __init__(self, vdd, gnd):
+        super(BarrelJack, self).__init__('Connectors', 'BARREL_JACK')
+        self.prefix = 'X'
+        self['1'].wire(vdd)
+        self['2'].wire(gnd)
+        self['3'].wire(gnd)
+
+class SPST(PcbComponent):
+    def __init__(self, p, n):
+        super(SPST, self).__init__('Buttons_Switches_SMD', 'SW_SPST_EVQP0')
+        self.prefix = 'SW'
         self['1'].wire(p)
         self['2'].wire(n)
 

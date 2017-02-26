@@ -11,9 +11,6 @@ from kicad.pcbnew.board import Board
 from kicad.point import Point
 from ast import literal_eval
 
-# gap between placed parts
-part_gap = 1.0
-
 # title block center
 # TODO: read this from the title block object
 disp_center_x = 150.0
