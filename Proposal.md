@@ -45,6 +45,7 @@ For autorouting, we plan to leverage existing work in the [FreeRouting project](
  2. Ability to center the PCB design within the title block.
  3. The PCB design must pass all KiCAD DRCs after automatic placement and routing.
  4. Demonstrate system operation by automatically generating the PCB design for [Arduino Uno](https://www.arduino.cc/en/uploads/Main/Arduino_Uno_Rev3-schematic.pdf)
+ 5. Instructions for installing on Ubuntu
 
 ## Timeline
 
@@ -61,7 +62,7 @@ Note: We have started work on the project already, and have completed 2(i) and 2
  * MM: Implement 2(vi)
 4. Mar 13 - Mar 19
  * SH: Implement 3(i) - 3(iii), work on final presentation
- * MM: Work on final presentation
+ * MM: Write 3 (v), work on final presentation
  
 ## References
 
