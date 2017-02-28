@@ -306,9 +306,7 @@ class IntXY(PositionBase):
         return z3.And(self._x >= 0, self._x + self._horiz_var >= 0, self._x + self._horiz_var <= self.fabric.syn_cols,
                       self._y >= 0, self._y + self._vert_var >= 0, self._y + self._vert_var <= self.fabric.syn_rows,
                       z3.Or(z3.And(self._horiz_var == self._dim1, self._vert_var == self._dim2),
-                            z3.And(self._horiz_var == -self._dim2, self._vert_var == self._dim1),
-                            z3.And(self._horiz_var == self._dim2, self._vert_var == -self._dim1),
-                            z3.And(self._horiz_var == -self._dim1, self._vert_var == -self._dim2)))
+                            z3.And(self._horiz_var == self._dim2, self._vert_var == self._dim1)))
 
     def get_coordinates(self, model):
         return (model.eval(self.x).as_long(), model.eval(self.y).as_long())

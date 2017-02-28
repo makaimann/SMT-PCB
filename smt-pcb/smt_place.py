@@ -103,19 +103,19 @@ def write_placement(model, design, smt_input, outfile='out.dict'):
             if (placed_width == snapped_width) and \
                 (placed_height == snapped_height):
                     mod['rotation'] = 0.0
-            elif (placed_width == -snapped_height) and \
+            elif (placed_width == snapped_height) and \
                 (placed_height == snapped_width):
                     mod['rotation'] = -math.pi/2
-                    mod['x'] = mod['x'] - snapped_height*dx
-            elif (placed_width == snapped_height) and \
-                (placed_height == -snapped_width):
-                    mod['rotation'] = math.pi/2
-                    mod['y'] = mod['y'] - snapped_width*dy
-            elif (placed_width == -snapped_width) and \
-                (placed_height == -snapped_height):
-                    mod['rotation'] = math.pi
-                    mod['x'] = mod['x'] - snapped_width*dx
-                    mod['y'] = mod['y'] - snapped_height*dy
+                    #mod['x'] = mod['x'] - snapped_height*dx
+            #elif (placed_width == snapped_height) and \
+            #    (placed_height == -snapped_width):
+            #        mod['rotation'] = math.pi/2
+            #        mod['y'] = mod['y'] - snapped_width*dy
+            #elif (placed_width == -snapped_width) and \
+            #    (placed_height == -snapped_height):
+            #        mod['rotation'] = math.pi
+            #        mod['x'] = mod['x'] - snapped_width*dx
+            #        mod['y'] = mod['y'] - snapped_height*dy
             else:
                 print(name, placed_width, placed_height, snapped_width, snapped_height)
                 raise Exception('Unimplemented rotation')
