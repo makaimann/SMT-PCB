@@ -10,10 +10,11 @@
 # SMT-PCB specific imports
 from mycad import PcbDesign
 from parts import *
+from math import pi
 
 def main():
     # create object to hold PCB design
-    pcb = PcbDesign('test.kicad_pcb', width=68.6, height=53.3)
+    pcb = PcbDesign('test.kicad_pcb', width=68.6, height=53.3, dx=1, dy=1)
     
     inst_usb(pcb)
     inst_atmega16u2(pcb)
@@ -30,17 +31,25 @@ def main():
     inst_atmega328p(pcb)
     pcb.add(SPST('RESET', 'GND'))
 
-    # IO headers
+    # Digital 10-pin header 
     pcb.add(Header10x1('IO8', 'IO9', 'SS', 'MOSI', 'MISO', 'SCK',
-                       'GND', 'AREF', 'AD4/SDA', 'AD5/SCL'))
+                       'GND', 'AREF', 'AD4/SDA', 'AD5/SCL',
+                       position=(17,1), rotation=pi/2.0))
+
+    # Digital 8-pin header
     pcb.add(Header8x1('IO0', 'IO1', 'IO2', 'IO3',
-                      'IO4', 'IO5', 'IO6', 'IO7'))
+                      'IO4', 'IO5', 'IO6', 'IO7',
+                       position=(44,1), rotation=pi/2.0))
+
+    # Analog 6-pin header
     pcb.add(Header6x1('AD0', 'AD1', 'AD2', 'AD3',
-                      'AD4/SDA', 'AD5/SCL'))
+                      'AD4/SDA', 'AD5/SCL', 
+                      position=(49,49), rotation=pi/2.0))
 
     # Power header
     pcb.add(Header8x1(None, '+5V', 'RESET', '+3V3', 
-                      '+5V', 'GND', 'GND', 'VIN'))
+                      '+5V', 'GND', 'GND', 'VIN',
+                      position=(26,49), rotation=pi/2.0))
 
     # ICSP connector
     pcb.add(ICSP(miso='MISO', sck='SCK', reset='RESET', vdd='+5V', mosi='MOSI', gnd='GND'))
@@ -61,7 +70,7 @@ def main():
                 'XTAL1','XTAL2'])
 
 def inst_usb(pcb):
-    pcb.add(UsbConnB(vdd='XUSB', dm='D-', dp='D+', gnd='UGND', shield='USHIELD'))
+    pcb.add(UsbConnB(vdd='XUSB', dm='D-', dp='D+', gnd='UGND', shield='USHIELD', position=(-6, 10), rotation=pi))
     pcb.add(Varistor('D-', 'USHIELD'))
     pcb.add(Varistor('D+', 'USHIELD'))
     pcb.add(Inductor('USHIELD', 'UGND'))
@@ -177,7 +186,7 @@ def inst_op_amps(pcb):
 
 def inst_ldos(pcb):
     # input jack
-    pcb.add(BarrelJack('PWRIN', 'GND'))
+    pcb.add(BarrelJack('PWRIN', 'GND', position=(-2,41)))
     pcb.add(Diode('PWRIN', 'VIN'))
     pcb.add(Capacitor('VIN', 'GND', 'CP_Elec'))
         

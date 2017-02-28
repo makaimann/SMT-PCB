@@ -8,12 +8,12 @@
 import os
 import re
 import random
-from pyparsing import OneOrMore, nestedExpr
 from kicad.pcbnew.module import Module
 from kicad.pcbnew.board import Board 
 import pcbnew
 import math
-from skidl import Part, TEMPLATE
+from skidl import Part
+from pcbparser import PcbParser
 
 class PinMapping(object):
     def __init__(self, lib, name):
@@ -39,98 +39,6 @@ class PinMapping(object):
         for pin in self.part.pins:
             self[pin.name] = pin.num
 
-class PcbParser(object):
-    @staticmethod
-    def formatFlat(s):
-        s = ' '.join(s)
-        return '(' + s + ')'
-
-    @staticmethod
-    def format(s,level=0):
-        # set the indent level for readability
-        indent = ' '*level
-
-        if isinstance(s,str):
-            return indent + s + '\n'
-        elif all(isinstance(x,str) for x in s):
-            return indent + PcbParser.formatFlat(s) + '\n'
-        else:
-            out = indent + '(' + s[0] + '\n'
-            for e in s[1:]:
-                out = out + PcbParser.format(e, level+1)
-            out = out + indent + ')\n'
-            return out
-
-    @staticmethod
-    def read_pcb_file(infile):
-        # read the *.kicad_pcb file
-        text = open(infile, 'r').read()
-        
-        # replace newlines with spaces
-        text = text.replace('\n', ' ') 
-
-        # parse Lisp-like syntax
-        # http://stackoverflow.com/questions/14058985/parsing-a-lisp-file-with-python
-        tree = OneOrMore(nestedExpr()).parseString(text)[0]
-    
-        return tree
-
-    @staticmethod
-    def write_pcb_file(tree, outfile):
-        formatted = PcbParser.format(tree)
-        open(outfile,'w').write(formatted)
-
-    @staticmethod
-    def get_cmd_index(tree, cmd):
-        return [x[0] for x in tree].index(cmd)
-
-    @staticmethod
-    def get_cmd(tree, cmd):
-        return next(x for x in tree if x[0]==cmd)
-
-    @staticmethod
-    def add_net_count(tree, net_dict):
-        general_cmd = PcbParser.get_cmd(tree, 'general')
-        net_cmd = PcbParser.get_cmd(general_cmd, 'nets')
-        net_cmd[1] = str(1+len(net_dict))
-
-    @staticmethod
-    def add_net_decls(tree, net_dict):
-        # build net declarations
-        net_decls = []
-        for net_name, net_id in net_dict.items():
-            net_decls.append(['net', str(net_id), net_name])
-
-        # add them to the PCB file at the right position
-        net_cmd_index = PcbParser.get_cmd_index(tree, 'net')
-        tree[(net_cmd_index+1):(net_cmd_index+1)] = net_decls
-
-    @staticmethod
-    def populate_netclass(tree, net_dict):
-        net_class_cmd = PcbParser.get_cmd(tree, 'net_class')
-        for net_name in net_dict:
-            net_class_cmd.append(['add_net', net_name])
- 
-    @staticmethod
-    def add_nets_to_modules(tree, pcb_dict, net_dict):
-        for val in tree:
-            if val[0] == 'module':
-                PcbParser.add_nets_to_module(val, pcb_dict, net_dict)
-
-    @staticmethod
-    def add_nets_to_module(mod, pcb_dict, net_dict):
-        for val in mod:
-            if val[0:2] == ['fp_text', 'reference']:
-                refdes = val[2]
-                if refdes not in pcb_dict:
-                    return
-            elif val[0] == 'pad':
-                pad_name = val[1]
-                if pad_name in pcb_dict[refdes]:
-                    net_name = pcb_dict[refdes][pad_name]
-                    net_id = net_dict[net_name]
-                    val.append(['net', str(net_id), net_name])
-       
 class BoardTools(object):
     @staticmethod
     def add_nets(pcb_dict, infile, outfile):
@@ -248,74 +156,44 @@ class PcbDesign(object):
                     design_dict[comp.name][pad.name] = pad.net_name
         return design_dict
 
-    def get_net_dict(self):
-        net_dict = {}
+    def get_module_dict(self):
+        module_dict = {}
+
         for comp in self:
-            for pad in comp:
-                if pad.net_name is not None:
-                    if pad.net_name not in net_dict:    
-                        net_dict[pad.net_name] = set()
-                    net_dict[pad.net_name].add(comp.name)
-        return net_dict
-
-    def get_graph_struct(self, critical_nets):
-        # generate dictionary mapping each net to a set of connected components
-        net_dict = self.get_net_dict()
-
-        # include only critical nets
-        if critical_nets is not None:
-            net_dict_keys = net_dict.keys()
-            for key in net_dict_keys:
-                if key not in critical_nets:
-                    del net_dict[key]
-
-        # create a list of lists of connected components
-        adj_list = []
-        for net_name, comp_set in net_dict.items():
-            adj_list.append([])
-            for comp_name in comp_set:
-                adj_list[-1].append(comp_name)
-        
-        # generate graph_struct needed by SMT solver
-        graph_struct = {}
-        included_comps = set()
-        for adj in adj_list:
-            first = adj[0]
-            rest = [(x,1) for x in adj[1:]]
-            for x in adj:
-                included_comps.add(x)
-            if first not in graph_struct:
-                graph_struct[first] = rest
+            module_dict[comp.name] = {}
+            
+            # set fixed rotation if provided
+            if comp.rotation is not None:
+                module_dict[comp.name]['rotation'] = comp.rotation
+                comp.set_rotation(comp.rotation)
             else:
-                graph_struct[first].extend(rest)
+                module_dict[comp.name]['rotation'] = None
+        
+            # set fixed position if provided
+            if comp.position is not None:
+                # TODO: use Point object
+                module_dict[comp.name]['x'] = comp.position[0]
+                module_dict[comp.name]['y'] = comp.position[1]
+            else:
+                module_dict[comp.name]['x'] = None
+                module_dict[comp.name]['y'] = None
 
-        # add back components not included earlier
-        for comp in self:
-            if comp.name not in included_comps:
-                graph_struct[comp.name]= []
+            # add size information
+            module_dict[comp.name]['width'] = comp.width
+            module_dict[comp.name]['height'] = comp.height
 
-        return graph_struct
-
-    def get_place_dict(self):
-        place_dict = {}
-        for comp in self:
-            width = int(math.ceil(float(comp.width)/self.dx))
-            height = int(math.ceil(float(comp.height)/self.dy))
-            place_dict[comp.name] = [(width,height), (None, None)]
-        return place_dict
-
-    @property 
-    def place_dims(self):
-        width = int(math.ceil(float(self.width)/self.dx))
-        height = int(math.ceil(float(self.height)/self.dy))
-        return (width, height)
+        return module_dict
 
     def write_smt_input(self, critical_nets):
+        smt_input = {}
+        smt_input['dx'] = self.dx
+        smt_input['dy'] = self.dy
+        smt_input['width'] = self.width
+        smt_input['height'] = self.height
+        smt_input['module_dict'] = self.get_module_dict()
+        smt_input['critical_nets'] = critical_nets
         with open(self.smt_file_in, 'w') as f:
-            f.write(repr(self.place_dims)+'\n')
-            f.write(repr(self.get_graph_struct(critical_nets))+'\n')
-            f.write(repr(self.get_place_dict())+'\n')
-            f.write(repr((self.dx, self.dy))+'\n')
+            f.write(repr(smt_input)+'\n')
 
 class PcbPad(object):
     def __init__(self, pad):
@@ -330,9 +208,13 @@ class PcbPad(object):
         return self.pad.name
 
 class PcbComponent(object):
-    def __init__(self, lib, part):
+    def __init__(self, lib, part, position=None, rotation=None):
         # instantiate the part
         self.load_module(lib, part)
+
+        # set the position and rotation
+        self.position = position
+        self.rotation = rotation
 
         # fill up the dictionary defining component pads
         self.pad_dict = {}
@@ -387,3 +269,9 @@ class PcbComponent(object):
     def name(self, value):
         self.module.reference = value
 
+    def set_rotation(self, value):
+        self.module.rotation = value
+
+    @property
+    def boundingBox(self):
+        return self.module.boundingBox

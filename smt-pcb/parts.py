@@ -11,35 +11,35 @@ import re
 from mycad import PcbDesign, PcbComponent, PinMapping
 
 class Resistor(PcbComponent):
-    def __init__(self, p, n, size='0805'):
-        super(Resistor, self).__init__('Resistors_SMD', 'R_'+size)
+    def __init__(self, p, n, size='0805', **kwargs):
+        super(Resistor, self).__init__('Resistors_SMD', 'R_'+size, **kwargs)
         self.prefix = 'R'
         self['1'].wire(p)
         self['2'].wire(n)
 
 class Inductor(PcbComponent):
-    def __init__(self, p, n, size='0805'):
-        super(Inductor, self).__init__('Inductors_SMD', 'L_'+size)
+    def __init__(self, p, n, size='0805', **kwargs):
+        super(Inductor, self).__init__('Inductors_SMD', 'L_'+size, **kwargs)
         self.prefix = 'L'
         self['1'].wire(p)
         self['2'].wire(n)
 
 class Capacitor(PcbComponent):
-    def __init__(self, p, n, ctype='C', size=None):
+    def __init__(self, p, n, ctype='C', size=None, **kwargs):
         if ctype=='C':
             if size is None:
                 size = '0805'
         elif ctype=='CP_Elec':
             if size is None:
                 size = '5x5.3'
-        super(Capacitor, self).__init__('Capacitors_SMD', ctype+'_'+size)
+        super(Capacitor, self).__init__('Capacitors_SMD', ctype+'_'+size, **kwargs)
         self.prefix = 'C'
         self['1'].wire(p)
         self['2'].wire(n)
 
 class NMOS(PcbComponent):
-    def __init__(self, gate, drain, source):
-        super(NMOS, self).__init__('TO_SOT_Packages_SMD', 'SOT-23')
+    def __init__(self, gate, drain, source, **kwargs):
+        super(NMOS, self).__init__('TO_SOT_Packages_SMD', 'SOT-23', **kwargs)
         self.mapping = PinMapping('transistors', 'MMBF170')
         self.prefix = 'Q'
         self[self.mapping['G']].wire(gate)
@@ -47,8 +47,8 @@ class NMOS(PcbComponent):
         self[self.mapping['D']].wire(drain)
 
 class LDO_3v3(PcbComponent):
-    def __init__(self, vin, gnd, vout, on=None):
-        super(LDO_3v3, self).__init__('TO_SOT_Packages_SMD', 'SOT-23-5')
+    def __init__(self, vin, gnd, vout, on=None, **kwargs):
+        super(LDO_3v3, self).__init__('TO_SOT_Packages_SMD', 'SOT-23-5', **kwargs)
         self.mapping = PinMapping('regul', 'LP2985LV')
         self.prefix = 'U'
         self[self.mapping['VIN']].wire(vin)
@@ -61,8 +61,8 @@ class LDO_3v3(PcbComponent):
         self[self.mapping['ON/OFF']].wire(on)
 
 class LDO_5v0(PcbComponent):
-    def __init__(self, vin, gnd, vout):
-        super(LDO_5v0, self).__init__('TO_SOT_Packages_SMD', 'SOT-223')
+    def __init__(self, vin, gnd, vout, **kwargs):
+        super(LDO_5v0, self).__init__('TO_SOT_Packages_SMD', 'SOT-223', **kwargs)
         self.mapping = PinMapping('regul', 'LD1117S50TR')
         self.prefix = 'U'
         self[self.mapping['VI']].wire(vin)
@@ -70,58 +70,58 @@ class LDO_5v0(PcbComponent):
         self[self.mapping['VO']].wire(vout)
 
 class BarrelJack(PcbComponent):
-    def __init__(self, vdd, gnd):
-        super(BarrelJack, self).__init__('Connectors', 'BARREL_JACK')
+    def __init__(self, vdd, gnd, **kwargs):
+        super(BarrelJack, self).__init__('Connectors', 'BARREL_JACK', **kwargs)
         self.prefix = 'X'
         self['1'].wire(vdd)
         self['2'].wire(gnd)
         self['3'].wire(gnd)
 
 class SPST(PcbComponent):
-    def __init__(self, p, n):
-        super(SPST, self).__init__('Buttons_Switches_SMD', 'SW_SPST_EVQP0')
+    def __init__(self, p, n, **kwargs):
+        super(SPST, self).__init__('Buttons_Switches_SMD', 'SW_SPST_EVQP0', **kwargs)
         self.prefix = 'SW'
         self['1'].wire(p)
         self['2'].wire(n)
 
 class LED(PcbComponent):
-    def __init__(self, p, n, size='0805'):
-        super(LED, self).__init__('LEDs', 'LED_'+size)
+    def __init__(self, p, n, size='0805', **kwargs):
+        super(LED, self).__init__('LEDs', 'LED_'+size, **kwargs)
         self.prefix = 'D'
         self['1'].wire(p)
         self['2'].wire(n)
 
 class Diode(PcbComponent):
-    def __init__(self, p, n, size='0805'):
-        super(Diode, self).__init__('Diodes_SMD', 'D_'+size)
+    def __init__(self, p, n, size='0805', **kwargs):
+        super(Diode, self).__init__('Diodes_SMD', 'D_'+size, **kwargs)
         self.prefix = 'D'
         self['1'].wire(p)
         self['2'].wire(n)
 
 class Crystal(PcbComponent):
-    def __init__(self, p, n):
-        super(Crystal, self).__init__('Crystals', 'Crystal_HC49-U_Vertical')
+    def __init__(self, p, n, **kwargs):
+        super(Crystal, self).__init__('Crystals', 'Crystal_HC49-U_Vertical', **kwargs)
         self.prefix = 'X'
         self['1'].wire(p)
         self['2'].wire(n)
 
 class Varistor(PcbComponent):
-    def __init__(self, p, n):
-        super(Varistor, self).__init__('Resistors_SMD', 'R_0603')
+    def __init__(self, p, n, **kwargs):
+        super(Varistor, self).__init__('Resistors_SMD', 'R_0603', **kwargs)
         self.prefix = 'VR'
         self['1'].wire(p)
         self['2'].wire(n)
 
 class PTC(PcbComponent):
-    def __init__(self, p, n):
-        super(PTC, self).__init__('Resistors_SMD', 'R_1812')
+    def __init__(self, p, n, **kwargs):
+        super(PTC, self).__init__('Resistors_SMD', 'R_1812', **kwargs)
         self.prefix='Z'
         self['1'].wire(p)
         self['2'].wire(n)
 
 class ICSP(PcbComponent):
-    def __init__(self, miso, sck, reset, vdd, mosi, gnd):
-        super(ICSP, self).__init__('Pin_Headers', 'Pin_Header_Straight_2x03_Pitch2.54mm')
+    def __init__(self, miso, sck, reset, vdd, mosi, gnd, **kwargs):
+        super(ICSP, self).__init__('Pin_Headers', 'Pin_Header_Straight_2x03_Pitch2.54mm', **kwargs)
         self.prefix = 'ICSP'
         self['1'].wire(miso)
         self['3'].wire(sck)
@@ -131,8 +131,8 @@ class ICSP(PcbComponent):
         self['6'].wire(gnd)
 
 class Header2x2(PcbComponent):
-    def __init__(self, pin1, pin2, pin3, pin4):
-        super(Header2x2, self).__init__('Pin_Headers', 'Pin_Header_Straight_2x02_Pitch2.54mm')
+    def __init__(self, pin1, pin2, pin3, pin4, **kwargs):
+        super(Header2x2, self).__init__('Pin_Headers', 'Pin_Header_Straight_2x02_Pitch2.54mm', **kwargs)
         self.prefix = 'J'
         self['1'].wire(pin1)
         self['2'].wire(pin2)
@@ -140,8 +140,8 @@ class Header2x2(PcbComponent):
         self['4'].wire(pin4)
 
 class Header10x1(PcbComponent):
-    def __init__(self, pin1, pin2, pin3, pin4, pin5, pin6, pin7, pin8, pin9, pin10): 
-        super(Header10x1, self).__init__('Pin_Headers', 'Pin_Header_Straight_1x10_Pitch2.54mm')
+    def __init__(self, pin1, pin2, pin3, pin4, pin5, pin6, pin7, pin8, pin9, pin10, **kwargs): 
+        super(Header10x1, self).__init__('Pin_Headers', 'Pin_Header_Straight_1x10_Pitch2.54mm', **kwargs)
         self.prefix = 'J'
         self['1'].wire(pin1)
         self['2'].wire(pin2)
@@ -155,8 +155,8 @@ class Header10x1(PcbComponent):
         self['10'].wire(pin10)
 
 class Header8x1(PcbComponent):
-    def __init__(self, pin1, pin2, pin3, pin4, pin5, pin6, pin7, pin8): 
-        super(Header8x1, self).__init__('Pin_Headers', 'Pin_Header_Straight_1x08_Pitch2.54mm')
+    def __init__(self, pin1, pin2, pin3, pin4, pin5, pin6, pin7, pin8, **kwargs): 
+        super(Header8x1, self).__init__('Pin_Headers', 'Pin_Header_Straight_1x08_Pitch2.54mm', **kwargs)
         self.prefix = 'J'
         self['1'].wire(pin1)
         self['2'].wire(pin2)
@@ -168,8 +168,8 @@ class Header8x1(PcbComponent):
         self['8'].wire(pin8)
 
 class Header6x1(PcbComponent):
-    def __init__(self, pin1, pin2, pin3, pin4, pin5, pin6): 
-        super(Header6x1, self).__init__('Pin_Headers', 'Pin_Header_Straight_1x06_Pitch2.54mm')
+    def __init__(self, pin1, pin2, pin3, pin4, pin5, pin6, **kwargs): 
+        super(Header6x1, self).__init__('Pin_Headers', 'Pin_Header_Straight_1x06_Pitch2.54mm', **kwargs)
         self.prefix = 'J'
         self['1'].wire(pin1)
         self['2'].wire(pin2)
@@ -179,9 +179,9 @@ class Header6x1(PcbComponent):
         self['6'].wire(pin6)
 
 class DualOpAmp(PcbComponent):
-    def __init__(self):
-        super(DualOpAmp, self).__init__('Housings_SSOP', 'TSSOP-8_4.4x3mm_Pitch0.65mm')
-        self.mapping = PinMapping('linear', 'LMV358')
+    def __init__(self, **kwargs):
+        super(DualOpAmp, self).__init__('Housings_SSOP', 'TSSOP-8_4.4x3mm_Pitch0.65mm', **kwargs)
+        self.mapping = PinMapping('linear', 'LMV358', **kwargs)
         self.prefix = 'U'
 
     def wire_power(self, vcc, gnd):
@@ -194,8 +194,8 @@ class DualOpAmp(PcbComponent):
         self[self.mapping['~']].wire(vo)
 
 class UsbConnB(PcbComponent):
-    def __init__(self, vdd, dm, dp, gnd, shield):
-        super(UsbConnB, self).__init__('Connectors', 'USB_B')
+    def __init__(self, vdd, dm, dp, gnd, shield, **kwargs):
+        super(UsbConnB, self).__init__('Connectors', 'USB_B', **kwargs)
         self.mapping = PinMapping('conn', 'usb_b')
         self.prefix = 'J'
         self[self.mapping['VBUS']].wire(vdd)
@@ -205,8 +205,8 @@ class UsbConnB(PcbComponent):
         self[self.mapping['Shield']].wire(shield)
 
 class ATMEGA16U2(PcbComponent):
-    def __init__(self):
-        super(ATMEGA16U2, self).__init__('Housings_DFN_QFN', 'QFN-32-1EP_5x5mm_Pitch0.5mm')
+    def __init__(self, **kwargs):
+        super(ATMEGA16U2, self).__init__('Housings_DFN_QFN', 'QFN-32-1EP_5x5mm_Pitch0.5mm', **kwargs)
         self.prefix = 'U'
         self.mapping = PinMapping('atmel', 'ATMEGA16U2-AU')
 
@@ -252,8 +252,8 @@ class ATMEGA16U2(PcbComponent):
         return self.port_gen('PD')
 
 class ATMEGA328P(PcbComponent):
-    def __init__(self):
-        super(ATMEGA328P, self).__init__('Housings_DIP', 'DIP-28_W7.62mm_Socket')
+    def __init__(self, **kwargs):
+        super(ATMEGA328P, self).__init__('Housings_DIP', 'DIP-28_W7.62mm_Socket', **kwargs)
         self.prefix = 'U'
         self.mapping = PinMapping('atmel', 'ATMEGA328P-PU')
 
