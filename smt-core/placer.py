@@ -27,6 +27,9 @@ class Placer:
     def min_area(self, adj, pinned_comps=None):
         print('Creating design...')
         d = design.Design(adj, self.fabric, position.IntXY, pinned_comps, 'Design1')
+        neighborhood = int(math.ceil(d.max_degree/4)) + 1
+        print('Trying with neighborhood = {}'.format(neighborhood))
+        d.add_constraint_generator('rect_neighborhood', constraints.rect_neighborhood(neighborhood))
         d.add_constraint_generator('distinct', constraints.no_overlap)
         opt = z3.Optimize()
         opt.add(d.constraints)
@@ -35,7 +38,7 @@ class Placer:
         opt.minimize(self.fabric.syn_cols)
         opt.minimize(self.fabric.syn_rows)
         if opt.check() == z3.sat:
-            print('Found satisfying placement')
+            print('Found optimal placement')
             return opt.model(), d
 
     def place(self, adj, pinned_comps=None, neighborhood=None, limit=5):

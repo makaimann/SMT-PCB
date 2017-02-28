@@ -51,7 +51,7 @@ def place_rects(pcb='test.kicad_pcb', smt_input='in.dict'):
 
     # place the devices
     p = placer.Placer(fab)
-    model, design = p.place(graph_struct, place_dict)
+    model, design = p.min_area(graph_struct, place_dict)
 
     return model, design, smt_input
 
