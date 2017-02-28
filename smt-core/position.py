@@ -317,4 +317,4 @@ class IntXY(PositionBase):
         ''' Returns a tuple containing the vertical and horizontal variables
              -- these can be negative which represents a rotation
         '''
-        return (model.eval(self.vert_var).as_long(), model.eval(self.horiz_var).as_long)
+        return (model.eval(self._vert_var).as_long(), model.eval(self._horiz_var).as_long)
