@@ -23,6 +23,7 @@ class Fabric:
             raise ValueError('dims must be of length 2, received object of length {}'.format(len(dims)))
 
         self._dims = dims
+        self._syn_dims = (z3.Int('rows'), z3.Int('cols'))
         self._wire_lengths = set(wire_lengths)
         self._W = W
         self._Fc = Fc
@@ -91,6 +92,14 @@ class Fabric:
     @property
     def cols(self):
         return self._dims[1]
+
+    @property
+    def syn_rows(self):
+        return self._syn_dims[0]
+
+    @property
+    def syn_cols(self):
+        return self._syn_dims[1]
 
     @property
     def wire_lengths(self):

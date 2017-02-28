@@ -24,6 +24,20 @@ class Placer:
         else:
             raise NotImplementedError('Parsing {} files is not yet supported'.format(file_extension))
 
+    def min_area(self, adj, pinned_comps=None):
+        print('Creating design...')
+        d = design.Design(adj, self.fabric, position.IntXY, pinned_comps, 'Design1')
+        d.add_constraint_generator('distinct', constraints.no_overlap)
+        opt = z3.Optimize()
+        opt.add(d.constraints)
+        opt.add(self.fabric.syn_rows <= self.fabric.rows)
+        opt.add(self.fabric.syn_cols <= self.fabric.cols)
+        opt.minimize(self.fabric.syn_cols)
+        opt.minimize(self.fabric.syn_rows)
+        if opt.check() == z3.sat:
+            print('Found satisfying placement')
+            return opt.model(), d
+
     def place(self, adj, pinned_comps=None, neighborhood=None, limit=5):
         print('Creating design...')
         d = design.Design(adj, self.fabric, position.IntXY, pinned_comps, 'Design1')
