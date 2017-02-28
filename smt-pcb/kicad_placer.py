@@ -7,9 +7,13 @@
 
 # Code to automatically place components based on input from SMT-PNR
 
+# general imports
+from ast import literal_eval
+
+# project imports
 from kicad.pcbnew.board import Board
 from kicad.point import Point
-from ast import literal_eval
+from mycad import BoardTools
 
 # title block center
 # TODO: read this from the title block object
@@ -20,7 +24,8 @@ disp_center_y = 100.0
 smt_output = literal_eval(open('out.dict','r').read())
 
 # load board
-pcb = Board.load('test.kicad_pcb')
+fname = 'test.kicad_pcb'
+pcb = Board.load(fname)
 
 # try to center components on board
 xmid = 0.5*smt_output['width']
@@ -41,3 +46,6 @@ for name, module in smt_output['module_dict'].items():
 
 # save board
 pcb.save()
+
+# add net classes due to a bug in the KiCAD Save() routing
+BoardTools.add_net_classes(smt_output['net_class_list'], fname, fname)

@@ -8,7 +8,7 @@
 # Demo code to generate Arduino Uno Rev3
 
 # SMT-PCB specific imports
-from mycad import PcbDesign
+from mycad import PcbDesign, NetClass
 from parts import *
 from math import pi
 
@@ -29,7 +29,7 @@ def main():
     pcb.add(Diode('RESET2', '+5V'))
 
     inst_atmega328p(pcb)
-    pcb.add(SPST('RESET', 'GND'))
+    pcb.add(SPST('RESET', 'GND', position=(3,2)))
 
     # Digital 10-pin header 
     pcb.add(Header10x1('IO8', 'IO9', 'SS', 'MOSI', 'MISO', 'SCK',
@@ -52,7 +52,7 @@ def main():
                       position=(26,49), rotation=pi/2.0))
 
     # ICSP connector
-    pcb.add(ICSP(miso='MISO', sck='SCK', reset='RESET', vdd='+5V', mosi='MOSI', gnd='GND'))
+    pcb.add(ICSP(miso='MISO', sck='SCK', reset='RESET', vdd='+5V', mosi='MOSI', gnd='GND', position=(62,22)))
  
     # Power LED
     pcb.add(Resistor('+5V', 'PWR_LED'))
@@ -65,6 +65,11 @@ def main():
     # Power input and LDOs
     inst_ldos(pcb)
  
+    # Set up net classes
+    power_class = NetClass('Power', trace_width=1.0)
+    power_class.add('PWRIN')
+    pcb.add_net_class(power_class)
+
     # put the parts on the board and save
     pcb.compile(critical_nets=['D+','D-','RD+','RD-','XT1','XT2',
                 'XTAL1','XTAL2'])

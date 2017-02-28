@@ -64,12 +64,22 @@ class BoardTools(object):
         # add nets to PCB file
         PcbParser.add_net_count(tree, net_dict)
         PcbParser.add_net_decls(tree, net_dict)
-        PcbParser.populate_netclass(tree, net_dict)
         PcbParser.add_nets_to_modules(tree, pcb_dict, net_dict)
 
         # Write updated PCB information
         PcbParser.write_pcb_file(tree, outfile)
     
+    @staticmethod
+    def add_net_classes(net_class_list, infile, outfile):
+        # Parse the exisiting PCB file
+        tree = PcbParser.read_pcb_file(infile)
+
+        # add custom net class definitions along with their nets
+        PcbParser.populate_net_classes(tree, net_class_list)
+
+        # Write updated PCB information
+        PcbParser.write_pcb_file(tree, outfile)
+
     @staticmethod
     def build_net_dict(pcb_dict):
         # build set of unique nets
@@ -92,6 +102,7 @@ class PcbDesign(object):
                  smt_file_in='in.dict', refdes_max_count=1000):
         self.fname = fname
         self.comp_dict = {}
+        self.net_class_list = []
         self.dx = dx
         self.dy = dy
         self.width = width
@@ -116,6 +127,9 @@ class PcbDesign(object):
         component.parent = self
         component.name = self.nextRefdes(component.prefix)
         self[component.name] = component
+
+    def add_net_class(self, net_class):
+        self.net_class_list.append(net_class)
 
     def nextRefdes(self, prefix):
         for count in range(1, self.refdes_max_count+1):
@@ -192,6 +206,13 @@ class PcbDesign(object):
         smt_input['height'] = self.height
         smt_input['module_dict'] = self.get_module_dict()
         smt_input['critical_nets'] = critical_nets
+
+        # add net class list information since this will have to
+        # added as the last step
+        net_class_list = [net_class.list_form() for 
+                          net_class in self.net_class_list]
+        smt_input['net_class_list'] = net_class_list
+
         with open(self.smt_file_in, 'w') as f:
             f.write(repr(smt_input)+'\n')
 
@@ -275,3 +296,44 @@ class PcbComponent(object):
     @property
     def boundingBox(self):
         return self.module.boundingBox
+
+class NetClass(object):
+    def __init__(self, name, description="", clearance=0.2, trace_width=0.25, 
+                 via_dia=0.8, via_drill=0.4, uvia_dia=0.3, uvia_drill=0.1):
+
+        if name=='Default':
+            raise Exception('Naming a NetClass "Default" is not allowed.')
+
+        self.name = name
+        self.description = description
+        self.clearance = clearance
+        self.trace_width = trace_width
+        self.via_dia = via_dia
+        self.via_drill = via_drill
+        self.uvia_dia = uvia_dia
+        self.uvia_drill = uvia_drill
+
+        self.nets = []
+
+    def add(self, net_or_nets):
+        if isinstance(net_or_nets, list):
+            self.nets.extend(net_or_nets)
+        else:
+            self.nets.append(net_or_nets)
+
+    def list_form(self):
+        # Populate net class options
+        cmd = ['net_class', self.name, '"'+self.description+'"',
+            ['clearance', str(self.clearance)],
+            ['trace_width', str(self.trace_width)],
+            ['via_dia', str(self.via_dia)],
+            ['via_drill', str(self.via_drill)],
+            ['uvia_dia', str(self.uvia_dia)],
+            ['uvia_drill', str(self.uvia_drill)]]    
+        
+        # Add connected nets to command
+        for net in self.nets:
+            cmd.append(['add_net', net])
+
+        # Return the full command
+        return cmd
