@@ -301,7 +301,7 @@ class ATMEGA328P(PcbComponent):
 class RandomComponent(PcbComponent):
     def __init__(self, name):
         lib, part = RandomComponent.rand_lib_part()
-        super(RandomComponent, self).__init__(name, lib, part)
+        super(RandomComponent, self).__init__(lib, part)
         self.prefix = 'U'
 
     @staticmethod
