@@ -235,7 +235,10 @@ class PcbComponent(object):
 
         # set the position and rotation
         self.position = position
-        self.rotation = rotation
+        if position is not None and rotation is None:
+            self.rotation = 0.0
+        else:
+            self.rotation = rotation
 
         # fill up the dictionary defining component pads
         self.pad_dict = {}

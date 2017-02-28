@@ -18,7 +18,7 @@ import placer
 
 def main():
     model, design, smt_input = place_rects()
-#    print_mesh(model, design)
+    print_mesh(model, design)
     write_placement(model, design, smt_input)
 
 def place_rects(pcb='test.kicad_pcb', smt_input='in.dict'):
@@ -83,16 +83,42 @@ def write_placement(model, design, smt_input, outfile='out.dict'):
     # writes the 2D placement information to a file
     dx = smt_input['dx']
     dy = smt_input['dy']
+    grid = PlaceGrid(width=smt_input['width'], height=smt_input['height'],
+                     dx=smt_input['dx'], dy=smt_input['dy'])
     mesh = {}
     for c in design.components:
         name = get_refdes(c.name)
         mod = smt_input['module_dict'][name]
+        (x, y) = c.pos.get_coordinates(model)
+        (placed_height, placed_width) = \
+            c.pos.get_vh(model)
+        snapped_width = grid.snap_right_x(mod['width'])
+        snapped_height = grid.snap_down_y(mod['height'])
+        print(name, snapped_width, snapped_height, placed_width, placed_height)
         if mod['x'] is None or mod['y'] is None:
-            (x, y) = c.pos.get_coordinates(model)
             mod['x'] = x*dx
             mod['y'] = y*dy
         if mod['rotation'] is None:
-            mod['rotation'] = 0.0
+
+            if (placed_width == snapped_width) and \
+                (placed_height == snapped_height):
+                    mod['rotation'] = 0.0
+            elif (placed_width == -snapped_height) and \
+                (placed_height == snapped_width):
+                    mod['rotation'] = -math.pi/2
+                    mod['x'] = mod['x'] - snapped_height*dx
+            elif (placed_width == snapped_height) and \
+                (placed_height == -snapped_width):
+                    mod['rotation'] = math.pi/2
+                    mod['y'] = mod['y'] - snapped_width*dy
+            elif (placed_width == -snapped_width) and \
+                (placed_height == -snapped_height):
+                    mod['rotation'] = math.pi
+                    mod['x'] = mod['x'] - snapped_width*dx
+                    mod['y'] = mod['y'] - snapped_height*dy
+            else:
+                print(name, placed_width, placed_height, snapped_width, snapped_height)
+                raise Exception('Unimplemented rotation')
 
     open(outfile,'w').write(repr(smt_input))
 
