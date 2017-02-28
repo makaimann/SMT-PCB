@@ -161,9 +161,9 @@ def no_overlap(components, wires, fabric):
     c = []
     for i in range(0, len(comps)):
         for j in range(i+1, len(comps)):
-            c.append(z3.Or(comps[i].pos.x - comps[j].pos.x >= comps[j].width,
-                           comps[j].pos.x - comps[i].pos.x >= comps[i].width,
-                           comps[i].pos.y - comps[j].pos.y >= comps[j].height,
-                           comps[j].pos.y - comps[i].pos.y >= comps[i].height))
+            c.append(z3.Or(comps[i].pos.x - comps[j].pos.x >= comps[j]._horiz_var,
+                           comps[j].pos.x - comps[i].pos.x >= comps[i]._horiz_var,
+                           comps[i].pos.y - comps[j].pos.y >= comps[j]._vert_var,
+                           comps[j].pos.y - comps[i].pos.y >= comps[i]._vert_var))
     return z3.And(c)
 
