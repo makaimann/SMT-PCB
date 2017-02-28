@@ -262,8 +262,8 @@ class IntXY(PositionBase):
         self._y = z3.Int(name + '_y')
         self._dim1 = dim1
         self._dim2 = dim2
-        self._width_var = z3.Int(name + '_width')
-        self._height_var = z3.Int(name + '_height')
+        self._horiz_var = z3.Int(name + '_width')
+        self._vert_var = z3.Int(name + '_height')
 
     @staticmethod
     def pos_repr(n):
@@ -279,14 +279,14 @@ class IntXY(PositionBase):
     #Note: These delta's are NOT absolute value
     def delta_x_fun(self, other):
         def delta_fun(constant):
-            return z3.And(self.x - other.x < other._width_var + constant,
-                          other.x - self.x < self._width_var + constant)
+            return z3.And(self.x - other.x < other._horiz_var + constant,
+                          other.x - self.x < self._horiz_var + constant)
         return delta_fun
 
     def delta_y_fun(self, other):
         def delta_fun(constant):
-            return z3.And(self.y - other.y < other._height_var + constant,
-                          other.y - self.y < self._height_var + constant)
+            return z3.And(self.y - other.y < other._vert_var + constant,
+                          other.y - self.y < self._vert_var + constant)
         return delta_fun
 
     @property
@@ -303,10 +303,18 @@ class IntXY(PositionBase):
 
     @property
     def invariants(self):
-        return z3.And(self._x >= 0, self._x + self._width_var <= self.fabric.syn_cols,
-                      self._y >= 0, self._y + self._height_var <= self.fabric.syn_rows,
-                      z3.Or(z3.And(self._width_var == self._dim1, self._height_var == self._dim2),
-                            z3.And(self._width_var == self._dim2, self._height_var == self._dim1)))
+        return z3.And(self._x >= 0, self._x + self._horiz_var <= self.fabric.syn_cols,
+                      self._y >= 0, self._y + self._vert_var <= self.fabric.syn_rows,
+                      z3.Or(z3.And(self._horiz_var == self._dim1, self._vert_var == self._dim2),
+                            z3.And(self._horiz_var == -self._dim2, self._vert_var == self._dim1),
+                            z3.And(self._horiz_var == self._dim2, self._vert_var == -self._dim1),
+                            z3.And(self._horiz_var == -self._dim1, self._vert_var == -self._dim2)))
 
     def get_coordinates(self, model):
         return (model.eval(self.x).as_long(), model.eval(self.y).as_long())
+
+    def get_vh(self, model):
+        ''' Returns a tuple containing the vertical and horizontal variables
+             -- these can be negative which represents a rotation
+        '''
+        return (model.eval(self.vert_var).as_long(), model.eval(self.horiz_var).as_long)

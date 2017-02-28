@@ -51,6 +51,11 @@ def place_rects(pcb='test.kicad_pcb', smt_input='in.dict'):
 
     # place the devices
     p = placer.Placer(fab)
+    #min_area -- tries to place all components in the smallest synthetic fabric
+    #while keeping each connection within a certain neighborhood
+    #from each component, can retrieve a horizontal and vertical distance that
+    #specifies the rotation
+    #place -- finds satisfying placement within a given neighborhood for each connection
     model, design = p.min_area(graph_struct, place_dict)
 
     return model, design, smt_input
