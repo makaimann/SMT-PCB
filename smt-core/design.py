@@ -390,6 +390,8 @@ class Design(NamedIDObject):
                 if self._pinned_comps[src_name][1][0] is not None and self._pinned_comps[src_name][1][1] is not None:
                     c.append(self._comps[src_name].pos.x == self._position_type.pos_repr(self._pinned_comps[src_name][1][0]))
                     c.append(self._comps[src_name].pos.y == self._position_type.pos_repr(self._pinned_comps[src_name][1][1]))
+                    c.append(self._comps[src_name].pos.horiz_var == self._comps[src_name].pos.dim1)
+                    c.append(self._comps[src_name].pos.vert_var == self._comps[src_name].pos.dim2)
             return z3.And(c)
         else:
             return []    

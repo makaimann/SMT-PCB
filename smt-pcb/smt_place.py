@@ -56,7 +56,7 @@ def place_rects(pcb='test.kicad_pcb', smt_input='in.dict'):
     #from each component, can retrieve a horizontal and vertical distance that
     #specifies the rotation
     #place -- finds satisfying placement within a given neighborhood for each connection
-    model, design = p.min_area(graph_struct, place_dict)
+    model, design = p.place(graph_struct, place_dict, 25)
 
     return model, design, smt_input
 

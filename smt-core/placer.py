@@ -40,11 +40,13 @@ class Placer:
         if opt.check() == z3.sat:
             print('Found optimal placement')
             return opt.model(), d
+        else:
+            print('Unable to find satisfying placement')
 
     def place(self, adj, pinned_comps=None, neighborhood=None, limit=5):
         print('Creating design...')
         d = design.Design(adj, self.fabric, position.IntXY, pinned_comps, 'Design1')
-        if not neighborhood:
+        if neighborhood is None:
             neighborhood = int(math.ceil(d.max_degree/4))
         print('Design has max degree = {}'.format(d.max_degree))
         d.add_constraint_generator('neighborhood', constraints.rect_neighborhood(neighborhood))

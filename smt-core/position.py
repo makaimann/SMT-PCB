@@ -302,9 +302,25 @@ class IntXY(PositionBase):
         return self._y
 
     @property
+    def dim1(self):
+        return self._dim1
+
+    @property
+    def dim2(self):
+        return self._dim2
+
+    @property
+    def horiz_var(self):
+        return self._horiz_var
+
+    @property
+    def vert_var(self):
+        return self._vert_var
+
+    @property
     def invariants(self):
-        return z3.And(self._x >= 0, self._x + self._horiz_var >= 0, self._x + self._horiz_var <= self.fabric.syn_cols,
-                      self._y >= 0, self._y + self._vert_var >= 0, self._y + self._vert_var <= self.fabric.syn_rows,
+        return z3.And(self._x >= 0, self._x + self._horiz_var <= self.fabric.cols,
+                      self._y >= 0, self._y + self._vert_var <= self.fabric.rows,
                       z3.Or(z3.And(self._horiz_var == self._dim1, self._vert_var == self._dim2),
                             z3.And(self._horiz_var == self._dim2, self._vert_var == self._dim1)))
 
