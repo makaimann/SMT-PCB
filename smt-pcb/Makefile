@@ -1,5 +1,5 @@
 all:
-	python arduino.py
+	python test.py
 	./run_smt.sh
 	python kicad_placer.py
 view:
