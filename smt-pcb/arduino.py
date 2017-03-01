@@ -13,50 +13,34 @@ from parts import *
 from math import pi
 
 def main():
-    # create object to hold PCB design
+    # Create object to hold PCB design
     pcb = PcbDesign('test.kicad_pcb', width=68.6, height=53.3, dx=1, dy=1)
-    
+
+    # Instantiate resistor packs used in the design
+    inst_res_packs(pcb)
+
+    # USB connector and associated protection circuitry    
     inst_usb(pcb)
+
+    # ATMEGA16U2, handles USB communication
     inst_atmega16u2(pcb)
-    pcb.add(Header2x2('PB4', 'PB6', 'PB5', 'PB7'))
-    pcb.add(Capacitor('DTR', 'RESET'))
-    pcb.add(Resistor('M8RXD', 'IO0'))
-    pcb.add(Resistor('M8TXD', 'IO1'))
 
-    # ICSP connector
-    pcb.add(ICSP(miso='MISO2', sck='SCK2', reset='RESET2', vdd='+5V', mosi='MOSI2', gnd='GND'))
-    pcb.add(Resistor('RESET2', '+5V'))
-    pcb.add(Diode('RESET2', '+5V'))
+    # Reset capacitor between ATMEGA16 and ATMEGA328P
+    pcb.add(Capacitor('DTR', 'RESET', size='0603'))
 
+    # UART resistors between ATMEGA16 and ATMEGA328P
+    pcb.rPack4.wire('M8RXD', 'IO0', sub='B')
+    pcb.rPack4.wire('M8TXD', 'IO1', sub='A')
+
+    # ATMEGA328P, main microcontroller
     inst_atmega328p(pcb)
-    pcb.add(SPST('RESET', 'GND', position=(3,2)))
 
-    # Digital 10-pin header 
-    pcb.add(Header10x1('IO8', 'IO9', 'SS', 'MOSI', 'MISO', 'SCK',
-                       'GND', 'AREF', 'AD4/SDA', 'AD5/SCL',
-                       position=(17,1), rotation=pi/2.0))
+    # Headers for power, analog, digital
+    inst_headers(pcb)
 
-    # Digital 8-pin header
-    pcb.add(Header8x1('IO0', 'IO1', 'IO2', 'IO3',
-                      'IO4', 'IO5', 'IO6', 'IO7',
-                       position=(44,1), rotation=pi/2.0))
-
-    # Analog 6-pin header
-    pcb.add(Header6x1('AD0', 'AD1', 'AD2', 'AD3',
-                      'AD4/SDA', 'AD5/SCL', 
-                      position=(49,49), rotation=pi/2.0))
-
-    # Power header
-    pcb.add(Header8x1(None, '+5V', 'RESET', '+3V3', 
-                      '+5V', 'GND', 'GND', 'VIN',
-                      position=(26,49), rotation=pi/2.0))
-
-    # ICSP connector
-    pcb.add(ICSP(miso='MISO', sck='SCK', reset='RESET', vdd='+5V', mosi='MOSI', gnd='GND', position=(62,22)))
- 
     # Power LED
-    pcb.add(Resistor('+5V', 'PWR_LED'))
-    pcb.add(Resistor('+5V', 'PWR_LED'))
+    pcb.rPack4.wire('+5V', 'PWR_LED', sub='C')
+    pcb.rPack4.wire('+5V', 'PWR_LED', sub='D')
     pcb.add(LED('PWR_LED', 'GND'))
  
     # Op amp control circuit
@@ -75,33 +59,67 @@ def main():
                 'XTAL1','XTAL2'])
 
 def inst_usb(pcb):
-    pcb.add(UsbConnB(vdd='XUSB', dm='D-', dp='D+', gnd='UGND', shield='USHIELD', position=(-6, 10), rotation=pi))
-    pcb.add(Varistor('D-', 'USHIELD'))
-    pcb.add(Varistor('D+', 'USHIELD'))
-    pcb.add(Inductor('USHIELD', 'UGND'))
-    pcb.add(PTC('XUSB', 'USBVCC'))
-    pcb.add(Resistor('D-', 'RD-'))
-    pcb.add(Resistor('D+', 'RD+'))
+    # USB B connector
+    pcb.add(UsbConnB(vdd='XUSB', dm='D-', dp='D+', gnd='UGND', shield='USHIELD', 
+                     position=(-6, 10), rotation=pi))
+
+    # EMC components
+    pcb.add(Varistor('D-', 'USHIELD', size='0603'))
+    pcb.add(Varistor('D+', 'USHIELD', size='0603'))
+    pcb.add(Inductor('USHIELD', 'UGND', size='0805'))
+
+    # Polyfuse to protect computer from shorts on the Arduino board
+    pcb.add(PTC('XUSB', 'USBVCC', size='1812'))
+
+    # Series termination resistors
+    pcb.rPack3.wire('D-', 'RD-', sub='A')
+    pcb.rPack3.wire('D+', 'RD+', sub='D')
+
+    # Short together UGND and GND nets
     pcb.add(Resistor('UGND', 'GND'))
 
 def inst_atmega16u2(pcb):
+    # Microcontroller to handle USB communication
     atmega16 = ATMEGA16U2()
     pcb.add(atmega16)
 
+    # Connector power the microcontroller
     atmega16.wire_power(vdd='+5V', gnd='GND')
-    atmega16.wire_usb(vdd='USBVCC', dm='RD-', dp='RD+', gnd='UGND')
-    pcb.add(Capacitor('+5V', 'GND'))
+    pcb.add(Capacitor('+5V', 'GND', size='0603'))
 
+    # Connect USB interface to the microcontroller
+    atmega16.wire_usb(vdd='USBVCC', dm='RD-', dp='RD+', gnd='UGND')
+    atmega16.ucap.wire('TP_VUCAP')
+    pcb.add(Capacitor('TP_VUCAP', 'UGND', size='0603'))
+
+    # Connect 16MHz Crystal
     atmega16.wire_xtal('XT1', 'XT2')
     pcb.add(Crystal('XT1', 'XT2'))
-    pcb.add(Resistor('XT1', 'XT2'))
-    pcb.add(Capacitor('XT1', 'GND'))
-    pcb.add(Capacitor('XT2', 'GND'))
+    pcb.add(Resistor('XT1', 'XT2', size='0603'))
+    pcb.add(Capacitor('XT1', 'GND', size='0603'))
+    pcb.add(Capacitor('XT2', 'GND', size='0603'))
 
+    # Reset circuit    
+    pcb.rPack1.wire('RESET2', '+5V', sub='C')
+    pcb.add(Diode('RESET2', '+5V'))
     atmega16.reset.wire('RESET2')
-    atmega16.ucap.wire('TP_VUCAP')
-    pcb.add(Capacitor('TP_VUCAP', 'UGND'))
-   
+
+    # USB boot enable
+    pcb.rPack2.wire('DTR', 'GND', sub='D')
+
+    # UART LEDs
+    pcb.rPack2.wire('+5V', 'TXLED_R', sub='C')
+    pcb.rPack2.wire('+5V', 'RXLED_R', sub='B')
+    pcb.add(LED('TXLED_R', 'TXLED'))
+    pcb.add(LED('RXLED_R', 'RXLED'))
+
+    # ICSP connector
+    pcb.add(ICSP(miso='MISO2', sck='SCK2', reset='RESET2', vdd='+5V', mosi='MOSI2', gnd='GND'))
+
+    # Debug header
+    pcb.add(Header2x2('PB4', 'PB6', 'PB5', 'PB7'))
+ 
+    # Wire port B  
     pb = atmega16.PB
     pb[7].wire('PB7')
     pb[6].wire('PB6')
@@ -111,6 +129,7 @@ def inst_atmega16u2(pcb):
     pb[2].wire('MOSI2')
     pb[1].wire('SCK2')
 
+    # Wire port D
     pd = atmega16.PD
     pd[7].wire('DTR')
     pd[5].wire('TXLED')
@@ -118,35 +137,36 @@ def inst_atmega16u2(pcb):
     pd[3].wire('M8RXD')
     pd[2].wire('M8TXD')
 
-    # USB boot enable
-    pcb.add(Resistor('DTR', 'GND'))
-
-    # LEDs
-    pcb.add(Resistor('+5V', 'TXLED_R'))
-    pcb.add(Resistor('+5V', 'RXLED_R'))
-    pcb.add(LED('TXLED_R', 'TXLED'))
-    pcb.add(LED('RXLED_R', 'RXLED'))
-
 def inst_atmega328p(pcb):
+    # Main microcontroller
     atmega328 = ATMEGA328P()
     pcb.add(atmega328)
 
+    # Power connections
     atmega328.wire_power(vdd='+5V', gnd='GND')
-    pcb.add(Capacitor('+5V', 'GND'))
+    pcb.add(Capacitor('+5V', 'GND', size='0603'))
+    
+    # Analog reference
+    atmega328.aref.wire('AREF')
+    pcb.add(Capacitor('AREF', 'GND', size='0603')
 
+    # Crystal circuit
     atmega328.wire_xtal('XTAL1', 'XTAL2')
-    pcb.add(Crystal('XTAL1', 'XTAL2'))
-    pcb.add(Resistor('XTAL1', 'XTAL2'))
-    pcb.add(Capacitor('XTAL1', 'GND'))
-    pcb.add(Capacitor('XTAL2', 'GND'))
+    pcb.add(Crystal3('XTAL1', 'XTAL2', 'GND'))
+    pcb.add(Resistor('XTAL1', 'XTAL2', size='0603'))
 
+    # Reset circuit
     atmega328.reset.wire('RESET')
     pcb.add(Diode('RESET', '+5V'))
-    pcb.add(Resistor('RESET', '+5V'))
+    pcb.rPack1.wire('RESET', '+5V', sub='D')
 
-    atmega328.aref.wire('AREF')
-    pcb.add(Capacitor('AREF', 'GND'))
+    # Reset button 
+    pcb.add(SPST('RESET', 'GND', position=(3,2)))
 
+    # ICSP connector
+    pcb.add(ICSP(miso='MISO', sck='SCK', reset='RESET', vdd='+5V', mosi='MOSI', gnd='GND', position=(62,22)))
+
+    # Wire Port B
     pb = atmega328.PB
     pb[5].wire('SCK')
     pb[4].wire('MISO')
@@ -155,6 +175,7 @@ def inst_atmega328p(pcb):
     pb[1].wire('IO9')
     pb[0].wire('IO8')
 
+    # Wire Port C
     pc = atmega328.PC
     pc[5].wire('AD5/SCL')
     pc[4].wire('AD4/SDA')
@@ -163,6 +184,7 @@ def inst_atmega328p(pcb):
     pc[1].wire('AD1')
     pc[0].wire('AD0')
 
+    # Wire Port D
     pd = atmega328.PD
     pd[7].wire('IO7')
     pd[6].wire('IO6')
@@ -174,36 +196,82 @@ def inst_atmega328p(pcb):
     pd[0].wire('IO0')
 
 def inst_op_amps(pcb):
+    # Dual op amp for control
     dual_op_amp = DualOpAmp()
     pcb.add(dual_op_amp)
 
-    pcb.add(Resistor('+5V', 'CMP'))
-    pcb.add(Resistor('CMP', 'GND'))
-
+    # Power connections
     dual_op_amp.wire_power('+5V', 'GND')
-    pcb.add(Capacitor('+5V', 'GND'))
+    pcb.add(Capacitor('+5V', 'GND', size='0603'))
 
-    dual_op_amp.wire_op_amp('CMP', '+3V3', 'GATE_CMD')
+    # 0.5x resistor divider on VIN
+    pcb.rPack1.wire('VIN', 'CMP', sub='A')
+    pcb.rPack1.wire('CMP', 'GND', sub='B')
 
-    dual_op_amp.wire_op_amp('SCK', 'L13', 'L13')
-    pcb.add(Resistor('L13', 'L13_R'))
+    # Comparator 1:
+    # If VIN<6.6, connect USBVCC to +5V
+    # Else disconnect USBVCC from +5V
+    dual_op_amp.wire('CMP', '+3V3', 'GATE_CMD', sub='A')
+
+    # Comparator 2:
+    # Drive LED with buffered version of SCK
+    dual_op_amp.wire('SCK', 'L13', 'L13', sub='B')
+    pcb.rPack2.wire('L13', 'L13_R', sub='A')
     pcb.add(LED('L13_R', 'GND'))
 
 def inst_ldos(pcb):
-    # input jack
+    # Barrel jack for 7-12V supply
     pcb.add(BarrelJack('PWRIN', 'GND', position=(-2,41)))
     pcb.add(Diode('PWRIN', 'VIN'))
-    pcb.add(Capacitor('VIN', 'GND', 'CP_Elec'))
+    pcb.add(Capacitor('VIN', 'GND', ctype='CP_Elec', size='5x5.3'))
         
     # 5.0V LDO
     pcb.add(LDO_5v0(vin='VIN', gnd='GND', vout='+5V'))
-    pcb.add(Capacitor('+5V', 'GND', 'CP_Elec'))
-    pcb.add(Capacitor('+5V', 'GND'))
+    pcb.add(Capacitor('+5V', 'GND', ctype='CP_Elec', size='5x5.3'))
+    pcb.add(Capacitor('+5V', 'GND', size='0603'))
 
     # 3.3V LDO
-    pcb.add(NMOS(gate='GATE_CMD', source='+5V', drain='USBVCC'))
+    pcb.add(PMOS(gate='GATE_CMD', source='+5V', drain='USBVCC'))
     pcb.add(LDO_3v3(vin='+5V', gnd='GND', vout='+3V3'))
-    pcb.add(Capacitor('+3V3', 'GND'))
+    pcb.add(Capacitor('+3V3', 'GND', size='0603'))
+
+def inst_headers(pcb):
+    # Digital 10-pin header 
+    pcb.add(Header10x1('IO8', 'IO9', 'SS', 'MOSI', 'MISO', 'SCK', 'GND', 'AREF', 'AD4/SDA', 'AD5/SCL',
+                       position=(17,1), rotation=pi/2.0))
+
+    # Digital 8-pin header
+    pcb.add(Header8x1('IO0', 'IO1', 'IO2', 'IO3', 'IO4', 'IO5', 'IO6', 'IO7',
+                      position=(44,1), rotation=pi/2.0))
+
+    # Analog 6-pin header
+    pcb.add(Header6x1('AD0', 'AD1', 'AD2', 'AD3', 'AD4/SDA', 'AD5/SCL',
+                      position=(49,49), rotation=pi/2.0))
+
+    # Power header
+    pcb.add(Header8x1(None, '+5V', 'RESET', '+3V3', '+5V', 'GND', 'GND', 'VIN',
+                      position=(26,49), rotation=pi/2.0))
+
+def inst_res_pack(pcb):
+    # Resistor pack 1 (10k)
+    rPack1 = ResistorPack(size='1206')
+    pcb.add(rPack1)
+    pcb.rPack1 = rPack1
+
+    # Resistor pack 2 (1k)
+    rPack2 = ResistorPack(size='1206')
+    pcb.add(rPack2)
+    pcb.rPack2 = rPack2
+
+    # Resistor pack 3 (22)
+    rPack3 = ResistorPack(size='1206')
+    pcb.add(rPack3)
+    pcb.rPack3 = rPack3
+
+    # Resistor pack 4 (1k)
+    rPack4 = ResistorPack(size='1206')
+    pcb.add(rPack4)
+    pcb.rPack4 = rPack4
 
 if __name__=='__main__':
     main()

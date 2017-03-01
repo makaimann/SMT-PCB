@@ -17,6 +17,11 @@ class Resistor(PcbComponent):
         self['1'].wire(p)
         self['2'].wire(n)
 
+class ResistorPack(PcbComponent):
+    def __init__(self, p, n, size='1206', **kwargs):
+        super(Resistor, self).__init__('Resistors_SMD', 'R_Array_Convex_4x'+size, **kwargs)
+        self.prefix = 'RN'
+
 class Inductor(PcbComponent):
     def __init__(self, p, n, size='0805', **kwargs):
         super(Inductor, self).__init__('Inductors_SMD', 'L_'+size, **kwargs)
@@ -106,8 +111,8 @@ class Crystal(PcbComponent):
         self['2'].wire(n)
 
 class Varistor(PcbComponent):
-    def __init__(self, p, n, **kwargs):
-        super(Varistor, self).__init__('Resistors_SMD', 'R_0603', **kwargs)
+    def __init__(self, p, n, size='0805', **kwargs):
+        super(Varistor, self).__init__('Resistors_SMD', 'R_'+size, **kwargs)
         self.prefix = 'VR'
         self['1'].wire(p)
         self['2'].wire(n)

@@ -51,11 +51,9 @@ def place_rects(pcb='test.kicad_pcb', smt_input='in.dict'):
 
     # place the devices
     p = placer.Placer(fab)
-    #min_area -- tries to place all components in the smallest synthetic fabric
-    #while keeping each connection within a certain neighborhood
+
     #from each component, can retrieve a horizontal and vertical distance that
     #specifies the rotation
-    #place -- finds satisfying placement within a given neighborhood for each connection
     model, design = p.place(graph_struct, place_dict, 25)
 
     return model, design, smt_input
@@ -106,16 +104,6 @@ def write_placement(model, design, smt_input, outfile='out.dict'):
             elif (placed_width == snapped_height) and \
                 (placed_height == snapped_width):
                     mod['rotation'] = -math.pi/2
-                    #mod['x'] = mod['x'] - snapped_height*dx
-            #elif (placed_width == snapped_height) and \
-            #    (placed_height == -snapped_width):
-            #        mod['rotation'] = math.pi/2
-            #        mod['y'] = mod['y'] - snapped_width*dy
-            #elif (placed_width == -snapped_width) and \
-            #    (placed_height == -snapped_height):
-            #        mod['rotation'] = math.pi
-            #        mod['x'] = mod['x'] - snapped_width*dx
-            #        mod['y'] = mod['y'] - snapped_height*dy
             else:
                 print(name, placed_width, placed_height, snapped_width, snapped_height)
                 raise Exception('Unimplemented rotation')
