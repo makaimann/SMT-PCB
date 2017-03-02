@@ -42,9 +42,9 @@ class Capacitor(PcbComponent):
         self['1'].wire(p)
         self['2'].wire(n)
 
-class NMOS(PcbComponent):
+class PMOS(PcbComponent):
     def __init__(self, gate, drain, source, **kwargs):
-        super(NMOS, self).__init__('TO_SOT_Packages_SMD', 'SOT-23', **kwargs)
+        super(PMOS, self).__init__('TO_SOT_Packages_SMD', 'SOT-23', **kwargs)
         self.mapping = PinMapping('transistors', 'MMBF170')
         self.prefix = 'Q'
         self[self.mapping['G']].wire(gate)
@@ -97,8 +97,12 @@ class LED(PcbComponent):
         self['2'].wire(n)
 
 class Diode(PcbComponent):
-    def __init__(self, p, n, size='0805', **kwargs):
-        super(Diode, self).__init__('Diodes_SMD', 'D_'+size, **kwargs)
+    def __init__(self, p, n, package='1206', **kwargs):
+        if package=='SMB':
+            part_name = 'D_SMB_Standard'
+        else:
+            part_name = 'D_' + package
+        super(Diode, self).__init__('Diodes_SMD', part_name, **kwargs)
         self.prefix = 'D'
         self['1'].wire(p)
         self['2'].wire(n)
@@ -118,8 +122,8 @@ class Varistor(PcbComponent):
         self['2'].wire(n)
 
 class PTC(PcbComponent):
-    def __init__(self, p, n, **kwargs):
-        super(PTC, self).__init__('Resistors_SMD', 'R_1812', **kwargs)
+    def __init__(self, p, n, size='1812', **kwargs):
+        super(PTC, self).__init__('Resistors_SMD', 'R_'+size, **kwargs)
         self.prefix='Z'
         self['1'].wire(p)
         self['2'].wire(n)
@@ -193,10 +197,15 @@ class DualOpAmp(PcbComponent):
         self[self.mapping['V+']].wire(vcc)
         self[self.mapping['V-']].wire(gnd)
 
-    def wire_op_amp(self, vip, vin, vo):
-        self[self.mapping['+']].wire(vip)
-        self[self.mapping['-']].wire(vin)
-        self[self.mapping['~']].wire(vo)
+    def wire(self, vip, vin, vo, sub):
+        if sub.lower() == 'a':
+            self['1'].wire(vo)
+            self['2'].wire(vin)
+            self['3'].wire(vip)
+        elif sub.lower() == 'b':
+            self['7'].wire(vo)
+            self['6'].wire(vin)
+            self['5'].wire(vip)
 
 class UsbConnB(PcbComponent):
     def __init__(self, vdd, dm, dp, gnd, shield, **kwargs):
@@ -269,9 +278,8 @@ class ATMEGA328P(PcbComponent):
     def wire_power(self, vdd, gnd):
         self[self.mapping['AVCC']].wire(vdd)
         self[self.mapping['VCC']].wire(vdd)
-        # TODO: properly handle pins with the same alias
-        # right now this will leave either pin 8 or 22 disconnected
-        self[self.mapping['GND']].wire(gnd)
+        for pin_no in self.mapping['GND']:
+            self[pin_no].wire(gnd)
 
     def port_gen(self, port_prefix):
         port = {}

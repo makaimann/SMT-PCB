@@ -37,7 +37,12 @@ class PinMapping(object):
     def build_alias_table(self):
         self.alias_table = {}
         for pin in self.part.pins:
-            self[pin.name] = pin.num
+            if pin.name not in self:
+                self[pin.name] = pin.num
+            elif not isinstance(self[pin.name], list):
+                self[pin.name] = [self[pin.name], pin.num]
+            else:
+                self[pin.name].append(pin.num)
 
 class BoardTools(object):
     @staticmethod

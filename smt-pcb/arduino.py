@@ -16,9 +16,6 @@ def main():
     # Create object to hold PCB design
     pcb = PcbDesign('test.kicad_pcb', width=68.6, height=53.3, dx=1, dy=1)
 
-    # Instantiate resistor packs used in the design
-    inst_res_packs(pcb)
-
     # USB connector and associated protection circuitry    
     inst_usb(pcb)
 
@@ -29,8 +26,8 @@ def main():
     pcb.add(Capacitor('DTR', 'RESET', size='0603'))
 
     # UART resistors between ATMEGA16 and ATMEGA328P
-    pcb.rPack4.wire('M8RXD', 'IO0', sub='B')
-    pcb.rPack4.wire('M8TXD', 'IO1', sub='A')
+    pcb.add(Resistor('M8RXD', 'IO0'))
+    pcb.add(Resistor('M8TXD', 'IO1'))
 
     # ATMEGA328P, main microcontroller
     inst_atmega328p(pcb)
@@ -39,8 +36,8 @@ def main():
     inst_headers(pcb)
 
     # Power LED
-    pcb.rPack4.wire('+5V', 'PWR_LED', sub='C')
-    pcb.rPack4.wire('+5V', 'PWR_LED', sub='D')
+    pcb.add(Resistor('+5V', 'PWR_LED'))
+    pcb.add(Resistor('+5V', 'PWR_LED'))
     pcb.add(LED('PWR_LED', 'GND'))
  
     # Op amp control circuit
@@ -72,8 +69,8 @@ def inst_usb(pcb):
     pcb.add(PTC('XUSB', 'USBVCC', size='1812'))
 
     # Series termination resistors
-    pcb.rPack3.wire('D-', 'RD-', sub='A')
-    pcb.rPack3.wire('D+', 'RD+', sub='D')
+    pcb.add(Resistor('D-', 'RD-'))
+    pcb.add(Resistor('D+', 'RD+'))
 
     # Short together UGND and GND nets
     pcb.add(Resistor('UGND', 'GND'))
@@ -100,16 +97,16 @@ def inst_atmega16u2(pcb):
     pcb.add(Capacitor('XT2', 'GND', size='0603'))
 
     # Reset circuit    
-    pcb.rPack1.wire('RESET2', '+5V', sub='C')
-    pcb.add(Diode('RESET2', '+5V'))
+    pcb.add(Resistor('RESET2', '+5V'))
+    pcb.add(Diode('RESET2', '+5V', package='1206'))
     atmega16.reset.wire('RESET2')
 
     # USB boot enable
-    pcb.rPack2.wire('DTR', 'GND', sub='D')
+    pcb.add(Resistor('DTR', 'GND'))
 
     # UART LEDs
-    pcb.rPack2.wire('+5V', 'TXLED_R', sub='C')
-    pcb.rPack2.wire('+5V', 'RXLED_R', sub='B')
+    pcb.add(Resistor('+5V', 'TXLED_R'))
+    pcb.add(Resistor('+5V', 'RXLED_R'))
     pcb.add(LED('TXLED_R', 'TXLED'))
     pcb.add(LED('RXLED_R', 'RXLED'))
 
@@ -148,17 +145,21 @@ def inst_atmega328p(pcb):
     
     # Analog reference
     atmega328.aref.wire('AREF')
-    pcb.add(Capacitor('AREF', 'GND', size='0603')
+    pcb.add(Capacitor('AREF', 'GND', size='0603'))
 
     # Crystal circuit
+    # Note: this differs from the official schematic,
+    # which uses a non-standard footprint
     atmega328.wire_xtal('XTAL1', 'XTAL2')
-    pcb.add(Crystal3('XTAL1', 'XTAL2', 'GND'))
+    pcb.add(Crystal('XTAL1', 'XTAL2'))
     pcb.add(Resistor('XTAL1', 'XTAL2', size='0603'))
+    pcb.add(Capacitor('XTAL1', 'GND', size='0603'))
+    pcb.add(Capacitor('XTAL2', 'GND', size='0603'))
 
     # Reset circuit
     atmega328.reset.wire('RESET')
-    pcb.add(Diode('RESET', '+5V'))
-    pcb.rPack1.wire('RESET', '+5V', sub='D')
+    pcb.add(Diode('RESET', '+5V', package='1206'))
+    pcb.add(Resistor('RESET', '+5V'))
 
     # Reset button 
     pcb.add(SPST('RESET', 'GND', position=(3,2)))
@@ -205,8 +206,8 @@ def inst_op_amps(pcb):
     pcb.add(Capacitor('+5V', 'GND', size='0603'))
 
     # 0.5x resistor divider on VIN
-    pcb.rPack1.wire('VIN', 'CMP', sub='A')
-    pcb.rPack1.wire('CMP', 'GND', sub='B')
+    pcb.add(Resistor('VIN', 'CMP'))
+    pcb.add(Resistor('CMP', 'GND'))
 
     # Comparator 1:
     # If VIN<6.6, connect USBVCC to +5V
@@ -216,13 +217,13 @@ def inst_op_amps(pcb):
     # Comparator 2:
     # Drive LED with buffered version of SCK
     dual_op_amp.wire('SCK', 'L13', 'L13', sub='B')
-    pcb.rPack2.wire('L13', 'L13_R', sub='A')
+    pcb.add(Resistor('L13', 'L13_R'))
     pcb.add(LED('L13_R', 'GND'))
 
 def inst_ldos(pcb):
     # Barrel jack for 7-12V supply
     pcb.add(BarrelJack('PWRIN', 'GND', position=(-2,41)))
-    pcb.add(Diode('PWRIN', 'VIN'))
+    pcb.add(Diode('PWRIN', 'VIN', package='SMB'))
     pcb.add(Capacitor('VIN', 'GND', ctype='CP_Elec', size='5x5.3'))
         
     # 5.0V LDO
@@ -251,27 +252,6 @@ def inst_headers(pcb):
     # Power header
     pcb.add(Header8x1(None, '+5V', 'RESET', '+3V3', '+5V', 'GND', 'GND', 'VIN',
                       position=(26,49), rotation=pi/2.0))
-
-def inst_res_pack(pcb):
-    # Resistor pack 1 (10k)
-    rPack1 = ResistorPack(size='1206')
-    pcb.add(rPack1)
-    pcb.rPack1 = rPack1
-
-    # Resistor pack 2 (1k)
-    rPack2 = ResistorPack(size='1206')
-    pcb.add(rPack2)
-    pcb.rPack2 = rPack2
-
-    # Resistor pack 3 (22)
-    rPack3 = ResistorPack(size='1206')
-    pcb.add(rPack3)
-    pcb.rPack3 = rPack3
-
-    # Resistor pack 4 (1k)
-    rPack4 = ResistorPack(size='1206')
-    pcb.add(rPack4)
-    pcb.rPack4 = rPack4
 
 if __name__=='__main__':
     main()
