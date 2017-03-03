@@ -11,6 +11,7 @@ from collections import defaultdict
 from ast import literal_eval
 import math
 import sys
+import time
 
 # SMT-PCB specific imports
 from design import Design, Fabric
@@ -57,7 +58,11 @@ def place_rects(smt_input):
 
     #from each component, can retrieve a horizontal and vertical distance that
     #specifies the rotation
+    print('Running SMT placement algorithm.')
+    start = time.time()
     model, design = p.place(graph_struct, place_dict, 25)
+    end = time.time()
+    print('Placing took', end-start, 'seconds.')
 
     return model, design, smt_input
 
