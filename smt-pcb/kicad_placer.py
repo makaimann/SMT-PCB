@@ -39,6 +39,9 @@ def main():
     x0 = disp_center_x - xmid
     ymid = 0.5*smt_output['height']
     y0 = disp_center_y - ymid
+
+    # coordinate of board upper left
+    BoardUpperLeft = Point(x0, y0)
     
     # place all components
     print "Placing all components."
@@ -49,9 +52,19 @@ def main():
         if module['x'] is not None and module['y'] is not None:
             pcb.modules[name].position =                \
                 pcb.modules[name].position              \
-                + Point(x0+module['x'], y0+module['y']) \
+                + Point(module['x'], module['y'])       \
+                + BoardUpperLeft                        \
                 - pcb.modules[name].boundingBox.ul
-    
+ 
+    # draw the board edge
+    pcb_bbox = pcb.boundingBox
+    ll = Point(0, smt_output['height']) + BoardUpperLeft
+    ul = Point(0, 0) + BoardUpperLeft
+    ur = Point(smt_output['width'], 0) + BoardUpperLeft
+    lr = Point(smt_output['width'], smt_output['height']) + BoardUpperLeft
+    edge = [ll, ul, ur, lr, ll]
+    pcb.add_polyline(edge, layer='Edge.Cuts')
+            
     # save board
     print "Saving PCB file."
     pcb.save()
