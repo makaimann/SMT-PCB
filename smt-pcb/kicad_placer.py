@@ -28,7 +28,8 @@ def main():
     
     # read board placement from SMT-PCB
     print "Reading output from SMT engine."
-    smt_output = literal_eval(open(dict_fname,'r').read())
+    with open(dict_fname, 'r') as f:
+        smt_output = literal_eval(f.read())
     
     # load board
     pcb = Board.load(pcb_fname)

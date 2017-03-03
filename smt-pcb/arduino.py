@@ -65,7 +65,7 @@ def main():
     # put the parts on the board and save
     print 'Compiling PCB'
     pcb.compile(critical_nets=['D+','D-','RD+','RD-','XT1','XT2',
-                'XTAL1','XTAL2'])
+                'XTAL1','XTAL2'], smt_file_in=dict_fname)
 
 def inst_usb(pcb):
     # USB B connector

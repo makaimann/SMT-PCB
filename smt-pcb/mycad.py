@@ -65,8 +65,7 @@ class BoardTools(object):
         return net_dict
 
 class PcbDesign(object):
-    def __init__(self, fname, dx=1.0, dy=1.0, width=25.0, height=25.0, 
-                 smt_file_in='in.dict', refdes_max_count=1000):
+    def __init__(self, fname, dx=1.0, dy=1.0, width=25.0, height=25.0, refdes_max_count=1000):
         self.fname = fname
         self.comp_dict = {}
         self.net_class_list = []
@@ -74,7 +73,6 @@ class PcbDesign(object):
         self.dy = dy
         self.width = width
         self.height = height
-        self.smt_file_in = smt_file_in
         self.refdes_max_count = refdes_max_count
 
     def __contains__(self, item):
@@ -109,7 +107,7 @@ class PcbDesign(object):
         for arg in args:
             arg.wire(net_name)
 
-    def compile(self, critical_nets=None):
+    def compile(self, critical_nets=None, smt_file_in=None):
         # Create empty PCB
         pcb = Board()
 
@@ -121,7 +119,7 @@ class PcbDesign(object):
         pcb.save(self.fname)
 
         # write input file for SMT solver
-        self.write_smt_input(critical_nets)
+        self.write_smt_input(critical_nets, smt_file_in)
 
     def get_design_dict(self):
         design_dict = {}
@@ -161,7 +159,7 @@ class PcbDesign(object):
 
         return module_dict
 
-    def write_smt_input(self, critical_nets):
+    def write_smt_input(self, critical_nets, smt_file_in):
         smt_input = {}
         smt_input['dx'] = self.dx
         smt_input['dy'] = self.dy
@@ -177,7 +175,7 @@ class PcbDesign(object):
                           net_class in self.net_class_list]
         smt_input['net_class_list'] = net_class_list
 
-        with open(self.smt_file_in, 'w') as f:
+        with open(smt_file_in, 'w') as f:
             f.write(repr(smt_input)+'\n')
 
 class PcbPad(object):

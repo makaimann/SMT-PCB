@@ -21,11 +21,11 @@ def main():
     # read command-line arguments
     dict_fname = sys.argv[1]
 
-    model, design, smt_input = place_rects(smt_input=dict_fname)
+    model, design, smt_dict = place_rects(smt_file_in=dict_fname)
     #print_mesh(model, design)
-    write_placement(model, design, smt_input, outfile=dict_fname)
+    write_placement(model, design, smt_dict, smt_file_out=dict_fname)
 
-def place_rects(smt_input):
+def place_rects(smt_file_in):
     ''' 
         place devices on a fabric, treating them as rectangles with varying sizes.
 
@@ -35,20 +35,21 @@ def place_rects(smt_input):
     '''
 
     # read in SMT input
-    smt_input = literal_eval(open('in.dict','r').read())
+    with open(smt_file_in, 'r') as f:
+        smt_dict = literal_eval(f.read())
 
     # create the placer grid
-    grid = PlaceGrid(width=smt_input['width'], height=smt_input['height'],
-                     dx=smt_input['dx'], dy=smt_input['dy'])
+    grid = PlaceGrid(width=smt_dict['width'], height=smt_dict['height'],
+                     dx=smt_dict['dx'], dy=smt_dict['dy'])
 
     # create the placement dictionary
     place_dict = {}
-    for name, module in smt_input['module_dict'].items():
+    for name, module in smt_dict['module_dict'].items():
         place_dict[name] = grid.place_entry(module)
 
     # read in the adjacency matrix
-    graph_struct = get_graph_struct(critical_nets=smt_input['critical_nets'],
-                                    design_dict=smt_input['design_dict'])
+    graph_struct = get_graph_struct(critical_nets=smt_dict['critical_nets'],
+                                    design_dict=smt_dict['design_dict'])
 
     # create a fabric for placing devices    
     fab = Fabric(grid.place_dims, wire_lengths={1})
@@ -64,7 +65,7 @@ def place_rects(smt_input):
     end = time.time()
     print('Placing took', end-start, 'seconds.')
 
-    return model, design, smt_input
+    return model, design, smt_dict
 
 def print_mesh(model, design):
     # prints the 2D placement to the console for debugging purposes
@@ -85,16 +86,16 @@ def print_mesh(model, design):
     s = '\n'.join(s)
     print(s)
 
-def write_placement(model, design, smt_input, outfile):
+def write_placement(model, design, smt_dict, smt_file_out):
     # writes the 2D placement information to a file
-    dx = smt_input['dx']
-    dy = smt_input['dy']
-    grid = PlaceGrid(width=smt_input['width'], height=smt_input['height'],
-                     dx=smt_input['dx'], dy=smt_input['dy'])
+    dx = smt_dict['dx']
+    dy = smt_dict['dy']
+    grid = PlaceGrid(width=smt_dict['width'], height=smt_dict['height'],
+                     dx=smt_dict['dx'], dy=smt_dict['dy'])
     mesh = {}
     for c in design.components:
         name = get_refdes(c.name)
-        mod = smt_input['module_dict'][name]
+        mod = smt_dict['module_dict'][name]
         (x, y) = c.pos.get_coordinates(model)
         (placed_height, placed_width) = \
             c.pos.get_vh(model)
@@ -115,7 +116,8 @@ def write_placement(model, design, smt_input, outfile):
             else:
                 raise Exception('Unimplemented rotation')
 
-    open(outfile,'w').write(repr(smt_input))
+    with open(smt_file_out, 'w') as f:
+        f.write(repr(smt_dict))
 
 def get_refdes(s):
     # removes the underscore and extra text that

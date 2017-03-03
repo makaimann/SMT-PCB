@@ -6,8 +6,8 @@
 # Library enables user to parse kicad_pcb file
 # Should be compatible with python2 and python3
 
-from pyparsing import OneOrMore, nestedExpr
 import time
+import re
 
 class PcbParser(object):
     @staticmethod
@@ -33,17 +33,43 @@ class PcbParser(object):
 
     @staticmethod
     def read_pcb_file(infile):
-        # read the *.kicad_pcb file
-        text = open(infile, 'r').read()
-        
-        # replace newlines with spaces
-        text = text.replace('\n', ' ') 
-
         # parse Lisp-like syntax
-        # http://stackoverflow.com/questions/14058985/parsing-a-lisp-file-with-python
+        # modified from: http://norvig.com/lispy2.html
+
         print 'Parsing PCB file.'
         start = time.time()
-        tree = OneOrMore(nestedExpr()).parseString(text)[0]
+
+        # read the *.kicad_pcb file token by token
+        with open(infile, 'r') as f:
+            inport = InPort(f)
+            
+            def read_ahead(token):
+                # If the current token is a left parenthesis, 
+                # start building a new sub-list
+                if token=='(':
+                    L = []
+                    while True:
+                        token = inport.next_token()
+                        if token == ')':
+                            return L
+                        else:
+                            L.append(read_ahead(token))
+                # Otherwise the token must be an atom, 
+                # unless there is a syntax error
+                elif token==')':
+                    raise Exception('Unexpected )')
+                elif token is None:
+                    raise Exception('Unexpected EOF')
+                else:
+                    return token
+
+            # Read the first token to start parsing
+            token1 = inport.next_token()
+            if token1 is None:
+                tree = None
+            else:
+                tree = read_ahead(token1)
+
         end = time.time()
         print 'Parsing took', end-start, 'seconds'
     
@@ -111,3 +137,23 @@ class PcbParser(object):
                     net_id = net_dict[net_name]
                     val.append(['net', str(net_id), net_name])
        
+# class used to parse Lisp-like syntax
+# modified from: http://norvig.com/lispy2.html
+class InPort(object):
+    # Tokenizer splits on parentheses but respects double-quoted strings
+    # TODO: handle multi-line quotes
+    tokenizer = r'''\s*([()]|"[^"]*"|[^\s(")]*)(.*)'''
+
+    def __init__(self, file):
+        self.file = file
+        self.line = ''
+
+    def next_token(self):
+        while True:
+            if self.line == '':
+                self.line = self.file.readline()
+            if self.line == '':
+                return None
+            token, self.line = re.match(InPort.tokenizer, self.line).groups()
+            if token != '':
+                return token
