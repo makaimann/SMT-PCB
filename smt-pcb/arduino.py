@@ -11,15 +11,22 @@
 from mycad import PcbDesign, NetClass
 from parts import *
 from math import pi
+import sys
 
 def main():
+    # read command-line arguments
+    dict_fname = sys.argv[1]
+    pcb_fname = sys.argv[2]
+
     # Create object to hold PCB design
-    pcb = PcbDesign('test.kicad_pcb', width=68.6, height=53.3, dx=1, dy=1)
+    pcb = PcbDesign(pcb_fname, width=68.6, height=53.3, dx=1, dy=1)
 
     # USB connector and associated protection circuitry    
+    print 'Instantiating USB'
     inst_usb(pcb)
 
     # ATMEGA16U2, handles USB communication
+    print 'Instantiating ATMEGA16U2'
     inst_atmega16u2(pcb)
 
     # Reset capacitor between ATMEGA16 and ATMEGA328P
@@ -30,6 +37,7 @@ def main():
     pcb.add(Resistor('M8TXD', 'IO1'))
 
     # ATMEGA328P, main microcontroller
+    print 'Instantiating ATMEGA328P'
     inst_atmega328p(pcb)
 
     # Headers for power, analog, digital
@@ -41,17 +49,21 @@ def main():
     pcb.add(LED('PWR_LED', 'GND'))
  
     # Op amp control circuit
+    print 'Instantiating op amps'
     inst_op_amps(pcb)
     
     # Power input and LDOs
+    print 'Instantiating LDOs'
     inst_ldos(pcb)
  
     # Set up net classes
+    print 'Building net classes'
     power_class = NetClass('Power', trace_width=1.0)
     power_class.add('PWRIN')
     pcb.add_net_class(power_class)
 
     # put the parts on the board and save
+    print 'Compiling PCB'
     pcb.compile(critical_nets=['D+','D-','RD+','RD-','XT1','XT2',
                 'XTAL1','XTAL2'])
 

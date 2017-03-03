@@ -12,41 +12,11 @@ from kicad.pcbnew.module import Module
 from kicad.pcbnew.board import Board 
 import pcbnew
 import math
-from skidl import Part
 from pcbparser import PcbParser
-
-class PinMapping(object):
-    def __init__(self, lib, name):
-        self.lib = lib
-        self.name = name
-        self.part = Part(lib, name)
-        self.build_alias_table()
-
-    def __getitem__(self, key):
-        return self.alias_table[key]
-
-    def __setitem__(self, key, val):
-        self.alias_table[key] = val
-
-    def __contains__(self, item):
-        return item in self.alias_table
-
-    def items(self):
-        return self.alias_table.items()
-    
-    def build_alias_table(self):
-        self.alias_table = {}
-        for pin in self.part.pins:
-            if pin.name not in self:
-                self[pin.name] = pin.num
-            elif not isinstance(self[pin.name], list):
-                self[pin.name] = [self[pin.name], pin.num]
-            else:
-                self[pin.name].append(pin.num)
 
 class BoardTools(object):
     @staticmethod
-    def add_nets(pcb_dict, infile, outfile):
+    def add_nets(pcb_dict, net_class_list, infile, outfile):
         # storage for modified text of the kicad_pcb file
         lines = []
     
@@ -71,15 +41,7 @@ class BoardTools(object):
         PcbParser.add_net_decls(tree, net_dict)
         PcbParser.add_nets_to_modules(tree, pcb_dict, net_dict)
 
-        # Write updated PCB information
-        PcbParser.write_pcb_file(tree, outfile)
-    
-    @staticmethod
-    def add_net_classes(net_class_list, infile, outfile):
-        # Parse the exisiting PCB file
-        tree = PcbParser.read_pcb_file(infile)
-
-        # add custom net class definitions along with their nets
+        # add net classes to PCB file
         PcbParser.populate_net_classes(tree, net_class_list)
 
         # Write updated PCB information
@@ -158,10 +120,6 @@ class PcbDesign(object):
         # save PCB file without connectivity information
         pcb.save(self.fname)
 
-        # add all net connections to the board, since this cannot 
-        # be accomplished through pcbnew at present
-        BoardTools.add_nets(self.get_design_dict(), self.fname, self.fname)
-        
         # write input file for SMT solver
         self.write_smt_input(critical_nets)
 
@@ -211,6 +169,7 @@ class PcbDesign(object):
         smt_input['height'] = self.height
         smt_input['module_dict'] = self.get_module_dict()
         smt_input['critical_nets'] = critical_nets
+        smt_input['design_dict'] = self.get_design_dict()
 
         # add net class list information since this will have to
         # added as the last step
@@ -250,14 +209,18 @@ class PcbComponent(object):
         self.populate_pads()
 
     def load_module(self, lib, part):
+        # determine path to KICAD libraries
         KICAD_PATH = os.environ['KICAD_PATH']
         file_ext = 'pretty'
 
+        # determine the appropriate plugin to use for loading the module
         src_libpath = os.path.join(KICAD_PATH, 'modules', lib + '.' + file_ext)
         src_type = pcbnew.IO_MGR.GuessPluginTypeFromLibPath(src_libpath)
         src_plugin = pcbnew.IO_MGR.PluginFind(src_type)
 
-        self.module = Module.wrap(src_plugin.FootprintLoad(src_libpath, part))
+        # load footprint, wrap using kicad-python
+        footprint = src_plugin.FootprintLoad(src_libpath, part)
+        self.module = Module.wrap(footprint)
 
     def populate_pads(self):
         for pad in self.module.pads:

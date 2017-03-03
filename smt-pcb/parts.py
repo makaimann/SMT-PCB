@@ -8,7 +8,7 @@
 import os
 import random
 import re
-from mycad import PcbDesign, PcbComponent, PinMapping
+from mycad import PcbDesign, PcbComponent
 
 class Resistor(PcbComponent):
     def __init__(self, p, n, size='0805', **kwargs):
@@ -45,7 +45,7 @@ class Capacitor(PcbComponent):
 class PMOS(PcbComponent):
     def __init__(self, gate, drain, source, **kwargs):
         super(PMOS, self).__init__('TO_SOT_Packages_SMD', 'SOT-23', **kwargs)
-        self.mapping = PinMapping('transistors', 'MMBF170')
+        self.mapping = {'S': '2', 'D': '3', 'G': '1'}
         self.prefix = 'Q'
         self[self.mapping['G']].wire(gate)
         self[self.mapping['S']].wire(source)
@@ -54,7 +54,7 @@ class PMOS(PcbComponent):
 class LDO_3v3(PcbComponent):
     def __init__(self, vin, gnd, vout, on=None, **kwargs):
         super(LDO_3v3, self).__init__('TO_SOT_Packages_SMD', 'SOT-23-5', **kwargs)
-        self.mapping = PinMapping('regul', 'LP2985LV')
+        self.mapping = {'VOUT': '5', 'ON/OFF': '3', 'VIN': '1', 'BYPASS': '4', 'GND': '2'}
         self.prefix = 'U'
         self[self.mapping['VIN']].wire(vin)
         self[self.mapping['GND']].wire(gnd)
@@ -68,7 +68,7 @@ class LDO_3v3(PcbComponent):
 class LDO_5v0(PcbComponent):
     def __init__(self, vin, gnd, vout, **kwargs):
         super(LDO_5v0, self).__init__('TO_SOT_Packages_SMD', 'SOT-223', **kwargs)
-        self.mapping = PinMapping('regul', 'LD1117S50TR')
+        self.mapping = {'VI': '3', 'GND': '1', 'VO': '2'}
         self.prefix = 'U'
         self[self.mapping['VI']].wire(vin)
         self[self.mapping['GND']].wire(gnd)
@@ -190,7 +190,7 @@ class Header6x1(PcbComponent):
 class DualOpAmp(PcbComponent):
     def __init__(self, **kwargs):
         super(DualOpAmp, self).__init__('Housings_SSOP', 'TSSOP-8_4.4x3mm_Pitch0.65mm', **kwargs)
-        self.mapping = PinMapping('linear', 'LMV358', **kwargs)
+        self.mapping = {'+': ['3', '5'], 'V+': '8', '-': ['2', '6'], 'V-': '4', '~': ['1', '7']}
         self.prefix = 'U'
 
     def wire_power(self, vcc, gnd):
@@ -210,7 +210,7 @@ class DualOpAmp(PcbComponent):
 class UsbConnB(PcbComponent):
     def __init__(self, vdd, dm, dp, gnd, shield, **kwargs):
         super(UsbConnB, self).__init__('Connectors', 'USB_B', **kwargs)
-        self.mapping = PinMapping('conn', 'usb_b')
+        self.mapping = {'VBUS': '1', 'D-': '2', 'D+': '3', 'GND': '4', 'Shield': '5'}
         self.prefix = 'J'
         self[self.mapping['VBUS']].wire(vdd)
         self[self.mapping['D-']].wire(dm)
@@ -222,7 +222,7 @@ class ATMEGA16U2(PcbComponent):
     def __init__(self, **kwargs):
         super(ATMEGA16U2, self).__init__('Housings_DFN_QFN', 'QFN-32-1EP_5x5mm_Pitch0.5mm', **kwargs)
         self.prefix = 'U'
-        self.mapping = PinMapping('atmel', 'ATMEGA16U2-AU')
+        self.mapping = {'(OC.0B/INT0)PD0': '6', '(PCINT6)PB6': '20', 'UCAP': '27', '(SCLK/PCINT1)PB1': '15', 'GND': '3', 'PC1(~RESET~/dW)': '24', 'UVCC': '31', '(PCINT7/OC.0A/OC.1C)PB7': '21', '(PD0/MISO/PCINT3)PB3': '17', 'XTAL1': '1', 'UGND': '28', 'AVCC': '32', '(PCINT5)PB5': '19', '(OC.1A/PCINT8)PC6': '23', '(PCINT11/AIN2)PC2': '5', '(PCINT10)PC4': '26', '(PDI/MOSI/PCINT2)PB2': '16', '(TXD1/INT3)PD3': '9', '(PCINT9/OC.1B)PC5': '25', 'VCC': '4', '(~SS~/PCINT0)PB0': '14', '(RXD1/AIN1/INT2)PD2': '8', '(~CTS~/~HWB~/AIN6/T0/INT7)PD7': '13', 'PC0(XTAL2)': '2', '(XCK/AIN4/PCINT12)PD5': '11', '(T1/PCINT4)PB4': '18', 'D-': '30', 'D+': '29', '(INT5/AIN3)PD4': '10', '(AIN0/INT1)PD1': '7', '(INT4/ICP1/CLK0)PC7': '22', '(~RTS~/AIN5/INT6)PD6': '12'}
 
     def wire_xtal(self, xtal1, xtal2):
         self[self.mapping['XTAL1']].wire(xtal1)
@@ -269,7 +269,7 @@ class ATMEGA328P(PcbComponent):
     def __init__(self, **kwargs):
         super(ATMEGA328P, self).__init__('Housings_DIP', 'DIP-28_W7.62mm_Socket', **kwargs)
         self.prefix = 'U'
-        self.mapping = PinMapping('atmel', 'ATMEGA328P-PU')
+        self.mapping = {'(PCINT23/AIN1)PD7': '13', '(PCINT14/~RESET~)PC6': '1', '(PCINT1/OC1A)PB1': '15', '(PCINT10/ADC2)PC2': '25', 'GND': ['8', '22'], '(PCINT18/INT0)PD2': '4', '(PCINT22/OC0A/AIN0)PD6': '12', 'AREF': '21', '(PCINT7/XTAL2/TOSC2)PB7': '10', '(PCINT11/ADC3)PC3': '26', '(PCINT21/OC0B/T1)PD5': '11', 'AVCC': '20', '(PCINT6/XTAL1/TOSC1)PB6': '9', '(PCINT16/RXD)PD0': '2', '(PCINT0/CLKO/ICP1)PB0': '14', '(PCINT19/OC2B/INT1)PD3': '5', '(PCINT5/SCK)PB5': '19', 'VCC': '7', '(PCINT13/SCL/ADC5)PC5': '28', '(PCINT20/XCK/T0)PD4': '6', '(PCINT8/ADC0)PC0': '23', '(PCINT17/TXD)PD1': '3', '(PCINT12/SDA/ADC4)PC4': '27', '(PCINT2/OC1B/~SS~)PB2': '16', '(PCINT4/MISO)PB4': '18', '(PCINT9/ADC1)PC1': '24', '(PCINT3/OC2A/MOSI)PB3': '17'}
 
     def wire_xtal(self, xtal1, xtal2):
         self[self.mapping['(PCINT6/XTAL1/TOSC1)PB6']].wire(xtal1)

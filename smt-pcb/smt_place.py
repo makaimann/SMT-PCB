@@ -10,18 +10,21 @@
 from collections import defaultdict
 from ast import literal_eval
 import math
+import sys
 
 # SMT-PCB specific imports
-from pcbparser import PcbParser
 from design import Design, Fabric
 import placer
 
 def main():
-    model, design, smt_input = place_rects()
-    print_mesh(model, design)
-    write_placement(model, design, smt_input)
+    # read command-line arguments
+    dict_fname = sys.argv[1]
 
-def place_rects(pcb='test.kicad_pcb', smt_input='in.dict'):
+    model, design, smt_input = place_rects(smt_input=dict_fname)
+    #print_mesh(model, design)
+    write_placement(model, design, smt_input, outfile=dict_fname)
+
+def place_rects(smt_input):
     ''' 
         place devices on a fabric, treating them as rectangles with varying sizes.
 
@@ -44,7 +47,7 @@ def place_rects(pcb='test.kicad_pcb', smt_input='in.dict'):
 
     # read in the adjacency matrix
     graph_struct = get_graph_struct(critical_nets=smt_input['critical_nets'],
-                                    tree=PcbParser.read_pcb_file(pcb))
+                                    design_dict=smt_input['design_dict'])
 
     # create a fabric for placing devices    
     fab = Fabric(grid.place_dims, wire_lengths={1})
@@ -77,7 +80,7 @@ def print_mesh(model, design):
     s = '\n'.join(s)
     print(s)
 
-def write_placement(model, design, smt_input, outfile='out.dict'):
+def write_placement(model, design, smt_input, outfile):
     # writes the 2D placement information to a file
     dx = smt_input['dx']
     dy = smt_input['dy']
@@ -92,7 +95,7 @@ def write_placement(model, design, smt_input, outfile='out.dict'):
             c.pos.get_vh(model)
         snapped_width = grid.snap_right_x(mod['width'])
         snapped_height = grid.snap_down_y(mod['height'])
-        print(name, snapped_width, snapped_height, placed_width, placed_height)
+
         if mod['x'] is None or mod['y'] is None:
             mod['x'] = x*dx
             mod['y'] = y*dy
@@ -105,7 +108,6 @@ def write_placement(model, design, smt_input, outfile='out.dict'):
                 (placed_height == snapped_width):
                     mod['rotation'] = -math.pi/2
             else:
-                print(name, placed_width, placed_height, snapped_width, snapped_height)
                 raise Exception('Unimplemented rotation')
 
     open(outfile,'w').write(repr(smt_input))
@@ -115,31 +117,22 @@ def get_refdes(s):
     # gets appended onto the refdes
     return s.split('_')[0]
 
-# TODO: clean up net_dict code
-def parse_pcb_tree(critical_nets, tree):
-    modules = set()
+def process_design_dict(critical_nets, design_dict):
+    modules = design_dict.keys()
     net_dict = {}
-    for arg in tree:
-        if arg[0] == 'module':
-            for val in arg:
-                if val[0:2] == ['fp_text', 'reference']:
-                    refdes = val[2]
-                    modules.add(refdes) 
-                    break
-        for val in arg:
-            if val[0]=='pad':
-                for cmd in val:
-                    if cmd[0] == 'net':
-                        net = cmd[2]
-                        if net in critical_nets:
-                            if net not in net_dict:
-                                net_dict[net] = set()
-                            net_dict[net].add(refdes)
+    
+    for module_name, pad_dict in design_dict.items():
+        for pad_name, net_name in pad_dict.items():
+            if net_name in critical_nets:
+                if net_name not in net_dict:
+                    net_dict[net_name] = set()
+                net_dict[net_name].add(module_name)
+
     return modules, net_dict
 
-def get_graph_struct(critical_nets, tree):
+def get_graph_struct(critical_nets, design_dict):
     # generate dictionary mapping each net to a set of connected components
-    modules, net_dict = parse_pcb_tree(critical_nets, tree)
+    modules, net_dict = process_design_dict(critical_nets, design_dict)
 
     # create a list of lists of connected components
     adj_list = []

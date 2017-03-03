@@ -7,6 +7,7 @@
 # Should be compatible with python2 and python3
 
 from pyparsing import OneOrMore, nestedExpr
+import time
 
 class PcbParser(object):
     @staticmethod
@@ -40,7 +41,11 @@ class PcbParser(object):
 
         # parse Lisp-like syntax
         # http://stackoverflow.com/questions/14058985/parsing-a-lisp-file-with-python
+        print 'Parsing PCB file.'
+        start = time.time()
         tree = OneOrMore(nestedExpr()).parseString(text)[0]
+        end = time.time()
+        print 'Parsing took', end-start, 'seconds'
     
         return tree
 

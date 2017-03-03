@@ -1,9 +1,13 @@
+PROJECT = test
+
 all:
-	python arduino.py
-	./run_smt.sh
-	python kicad_placer.py
+	time python arduino.py $(PROJECT).dict $(PROJECT).kicad_pcb
+	@echo
+	time ./run_smt.sh $(PROJECT).dict
+	@echo
+	time python kicad_placer.py $(PROJECT).dict $(PROJECT).kicad_pcb
 view:
-	pcbnew test.kicad_pcb &
+	pcbnew $(PROJECT).kicad_pcb &
 clean:
 	rm -f *.kicad_pcb *.net *.dict *.pro *.pyc *.pcb *.ses *.dsn *.kicad_pcb-bak *.log
 
