@@ -92,6 +92,11 @@ def write_placement(model, design, smt_dict, smt_file_out):
     dy = smt_dict['dy']
     grid = PlaceGrid(width=smt_dict['width'], height=smt_dict['height'],
                      dx=smt_dict['dx'], dy=smt_dict['dy'])
+
+    # writes the snapped width and height of the board
+    smt_dict['edge_lr_x'] = (grid.board_width_snapped+1)*dx
+    smt_dict['edge_lr_y'] = (grid.board_height_snapped+1)*dy
+    
     mesh = {}
     for c in design.components:
         name = get_refdes(c.name)
@@ -103,16 +108,20 @@ def write_placement(model, design, smt_dict, smt_file_out):
         snapped_height = grid.snap_down_y(mod['height'])
 
         if mod['x'] is None or mod['y'] is None:
-            mod['x'] = x*dx
-            mod['y'] = y*dy
+            mod['x'] = x*dx 
+            mod['y'] = y*dy 
         if mod['rotation'] is None:
 
             if (placed_width == snapped_width) and \
                 (placed_height == snapped_height):
                     mod['rotation'] = 0.0
+                    mod['x'] = mod['x'] + 0.5*(dx*snapped_width-mod['width'])
+                    mod['y'] = mod['y'] + 0.5*(dy*snapped_height-mod['height'])
             elif (placed_width == snapped_height) and \
                 (placed_height == snapped_width):
                     mod['rotation'] = -math.pi/2
+                    mod['x'] = mod['x'] + 0.5*(dx*snapped_height-mod['height'])
+                    mod['y'] = mod['y'] + 0.5*(dy*snapped_width-mod['width'])
             else:
                 raise Exception('Unimplemented rotation')
 
@@ -186,11 +195,11 @@ class PlaceGrid(object):
 
     @property
     def board_width_snapped(self):
-        return self.snap_right_x(self.width)
+        return self.snap_right_x(self.width)-1
 
     @property
     def board_height_snapped(self):
-        return self.snap_down_y(self.height)
+        return self.snap_down_y(self.height)-1
 
     def place_entry(self, module):
         if module['x'] is not None and module['y'] is not None:

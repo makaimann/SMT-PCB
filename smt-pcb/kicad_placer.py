@@ -58,10 +58,10 @@ def main():
  
     # draw the board edge
     pcb_bbox = pcb.boundingBox
-    ll = Point(0, smt_output['height']) + BoardUpperLeft
+    ll = Point(0, smt_output['edge_lr_y']) + BoardUpperLeft
     ul = Point(0, 0) + BoardUpperLeft
-    ur = Point(smt_output['width'], 0) + BoardUpperLeft
-    lr = Point(smt_output['width'], smt_output['height']) + BoardUpperLeft
+    ur = Point(smt_output['edge_lr_x'], 0) + BoardUpperLeft
+    lr = Point(smt_output['edge_lr_x'], smt_output['edge_lr_y']) + BoardUpperLeft
     edge = [ll, ul, ur, lr, ll]
     pcb.add_polyline(edge, layer='Edge.Cuts')
             
