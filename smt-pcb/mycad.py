@@ -10,6 +10,7 @@ import re
 import random
 from kicad.pcbnew.module import Module
 from kicad.pcbnew.board import Board 
+from kicad.point import Point
 import pcbnew
 import math
 from pcbparser import PcbParser
@@ -146,12 +147,29 @@ class PcbDesign(object):
         
             # set fixed position if provided
             if comp.position is not None:
-                # TODO: use Point object
-                module_dict[comp.name]['x'] = comp.position[0]
-                module_dict[comp.name]['y'] = comp.position[1]
+                if comp.mode == 'UL':
+                    module_dict[comp.name]['x'] = comp.position.x
+                    module_dict[comp.name]['y'] = comp.position.y
+                elif comp.mode == 'PIN1':
+                    # TODO: make it easier to extract PIN1
+        
+                    # Extract the coordinates of PIN1 of the object
+                    for p in comp.module._obj.Pads():
+                        if p.GetPadName() == '1':
+                            pin1_center = Point.wrap(p.GetCenter())
+                            break
+
+                    # Compute the position of the upper-left corner of the device
+                    pos = comp.position + comp.boundingBox.ul - pin1_center
+
+                    # Store result in the module dictionary
+                    module_dict[comp.name]['x'] = pos.x
+                    module_dict[comp.name]['y'] = pos.y
+                module_dict[comp.name]['fixed'] = True
             else:
                 module_dict[comp.name]['x'] = None
                 module_dict[comp.name]['y'] = None
+                module_dict[comp.name]['fixed'] = False
 
             # add size information
             module_dict[comp.name]['width'] = comp.width
@@ -175,6 +193,9 @@ class PcbDesign(object):
                           net_class in self.net_class_list]
         smt_input['net_class_list'] = net_class_list
 
+        # add the board edge definition
+        smt_input['board_edge'] = [(p.x, p.y) for p in self.edge]
+
         with open(smt_file_in, 'w') as f:
             f.write(repr(smt_input)+'\n')
 
@@ -191,16 +212,25 @@ class PcbPad(object):
         return self.pad.name
 
 class PcbComponent(object):
-    def __init__(self, lib, part, position=None, rotation=None):
+    def __init__(self, lib, part, position=None, rotation=None, mode=None):
         # instantiate the part
         self.load_module(lib, part)
 
         # set the position and rotation
         self.position = position
-        if position is not None and rotation is None:
-            self.rotation = 0.0
+        if position is not None:
+            if rotation is None:
+                self.rotation = 0.0
+            else:
+                self.rotation = rotation
+            if mode is None:
+                self.mode = 'UL'
+            else:
+                self.mode = mode
         else:
+            self.position = position
             self.rotation = rotation
+            self.mode = mode
 
         # fill up the dictionary defining component pads
         self.pad_dict = {}

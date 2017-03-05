@@ -84,15 +84,25 @@ class BoundingBox(object):
     
 class Point(units.BaseUnitTuple):
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, unit='mm'):
         """Creates a point.
 
         :param x: x coordinate.
         :param y: y coordinate.
         """
+        
+        # determine the units conversion factor
+        if unit.lower() == 'mm':
+            scale_factor = 1.0
+        elif unit.lower() in ['mil', 'mils']:
+            scale_factor = 0.0254
+        else:   
+            raise Exception('Unsupported unit type.')
+
+        # create the point object
         self._class = Point
-        self._obj = pcbnew.wxPoint(x * units.DEFAULT_UNIT_IUS,
-                                   y * units.DEFAULT_UNIT_IUS)
+        self._obj = pcbnew.wxPoint(scale_factor * x * units.DEFAULT_UNIT_IUS,
+                                   scale_factor * y * units.DEFAULT_UNIT_IUS)
 
     @property
     def x(self):

@@ -99,31 +99,33 @@ def write_placement(model, design, smt_dict, smt_file_out):
     
     mesh = {}
     for c in design.components:
+        # get the reference to the current module from the SMT input dictionary
         name = get_refdes(c.name)
         mod = smt_dict['module_dict'][name]
+        
+        # if this module has a fixed position, skip it
+        if mod['fixed']:
+            continue
+
+        # get the x, y position of the component as placed
         (x, y) = c.pos.get_coordinates(model)
-        (placed_height, placed_width) = \
-            c.pos.get_vh(model)
+        mod['x'] = x*dx 
+        mod['y'] = y*dy 
+
+        # determine height and width of component as placed
+        (placed_height, placed_width) = c.pos.get_vh(model)
+    
+        # determine height and width of component before placement
         snapped_width = grid.snap_right_x(mod['width'])
         snapped_height = grid.snap_down_y(mod['height'])
 
-        if mod['x'] is None or mod['y'] is None:
-            mod['x'] = x*dx 
-            mod['y'] = y*dy 
-        if mod['rotation'] is None:
-
-            if (placed_width == snapped_width) and \
-                (placed_height == snapped_height):
-                    mod['rotation'] = 0.0
-                    mod['x'] = mod['x'] + 0.5*(dx*snapped_width-mod['width'])
-                    mod['y'] = mod['y'] + 0.5*(dy*snapped_height-mod['height'])
-            elif (placed_width == snapped_height) and \
-                (placed_height == snapped_width):
-                    mod['rotation'] = -math.pi/2
-                    mod['x'] = mod['x'] + 0.5*(dx*snapped_height-mod['height'])
-                    mod['y'] = mod['y'] + 0.5*(dy*snapped_width-mod['width'])
-            else:
-                raise Exception('Unimplemented rotation')
+        # determine rotation
+        if placed_width == snapped_width and placed_height == snapped_height:
+                mod['rotation'] = 0.0
+        elif placed_width == snapped_height and placed_height == snapped_width:
+                mod['rotation'] = -math.pi/2
+        else:
+            raise Exception('Unimplemented rotation')
 
     with open(smt_file_out, 'w') as f:
         f.write(repr(smt_dict))
@@ -195,11 +197,11 @@ class PlaceGrid(object):
 
     @property
     def board_width_snapped(self):
-        return self.snap_right_x(self.width)-1
+        return self.snap_left_x(self.width)-1
 
     @property
     def board_height_snapped(self):
-        return self.snap_down_y(self.height)-1
+        return self.snap_up_y(self.height)-1
 
     def place_entry(self, module):
         if module['x'] is not None and module['y'] is not None:
