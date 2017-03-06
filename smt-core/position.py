@@ -256,6 +256,85 @@ class BVXY(PositionBase):
 
 
 class IntXY(PositionBase):
+    def __init__(self, name, fabric, dim1, dim2):
+        super().__init__(name, fabric)
+        self._x = z3.Int(name + '_x')
+        self._y = z3.Int(name + '_y')
+        self._dim1 = dim1
+        self._dim2 = dim2
+        self._horiz_var = z3.Int(name + '_width')
+        self._vert_var = z3.Int(name + '_height')
+
+    @staticmethod
+    def pos_repr(n):
+        ''' returns the representation of an x or y coordinate in this encoding'''
+        return n
+
+    def delta_x(self, other):
+        return [], self.x - other.x
+
+    def delta_y(self, other):
+        return [], self.y - other.y
+
+    #Note: These delta's are NOT absolute value
+    def delta_x_fun(self, other):
+        def delta_fun(constant):
+            return z3.And(self.x - other.x < other._horiz_var + constant,
+                          other.x - self.x < self._horiz_var + constant)
+        return delta_fun
+
+    def delta_y_fun(self, other):
+        def delta_fun(constant):
+            return z3.And(self.y - other.y < other._vert_var + constant,
+                          other.y - self.y < self._vert_var + constant)
+        return delta_fun
+
+    @property
+    def flat(self):
+        raise ValueError('flat does not make sense with position.IntXY')
+
+    @property
+    def x(self):
+        return self._x
+
+    @property
+    def y(self):
+        return self._y
+
+    @property
+    def dim1(self):
+        return self._dim1
+
+    @property
+    def dim2(self):
+        return self._dim2
+
+    @property
+    def horiz_var(self):
+        return self._horiz_var
+
+    @property
+    def vert_var(self):
+        return self._vert_var
+
+    @property
+    def invariants(self):
+        return z3.And(self._x >= 0, self._x + self._horiz_var <= self.fabric.cols,
+                      self._y >= 0, self._y + self._vert_var <= self.fabric.rows,
+                      z3.Or(z3.And(self._horiz_var == self._dim1, self._vert_var == self._dim2),
+                            z3.And(self._horiz_var == self._dim2, self._vert_var == self._dim1)))
+
+    def get_coordinates(self, model):
+        return (model.eval(self.x).as_long(), model.eval(self.y).as_long())
+
+    def get_vh(self, model):
+        ''' Returns a tuple containing the vertical and horizontal variables
+             -- these can be negative which represents a rotation
+        '''
+        return (model.eval(self._vert_var).as_long(), model.eval(self._horiz_var).as_long())
+
+
+class RotIntXY(PositionBase):
     def __init__(self, name, fabric, width, height):
         super().__init__(name, fabric)
         self._x = z3.Int(name + '_x')
@@ -384,12 +463,3 @@ class IntXY(PositionBase):
             return 3*pi/2
         else:
             raise ValueError('Solver produced invalid rotation!')
-        
-        
-
-    #deprecated
-    #def get_vh(self, model):
-    #    ''' Returns a tuple containing the vertical and horizontal variables
-    #         -- these can be negative which represents a rotation
-    #    '''
-    #    return (model.eval(self._vert_var).as_long(), model.eval(self._horiz_var).as_long())
