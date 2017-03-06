@@ -3,6 +3,20 @@ import operator
 import functools as ft
 
 
+def exactly_one(x, y, z, w):
+    '''
+    Takes four bools and returns a constraint that is true iff exactly 
+    one of them is true
+    '''
+    l = [x, y, z, w]
+    uneven_num = z3.Xor(l[0], z3.Xor(l[1], z3.Xor(l[2], l[3])))
+    pairs = []
+    for i in range(0,3):
+        for j in range(i, 4):
+            pairs.append(z3.Not(z3.And(l[i] , l[j])))
+    only_one = z3.And(pairs)
+    return z3.And(uneven_num, only_one)
+
 def hamming_a(bv):
     s = bv.size()
     return z3.Sum([(bv >> i) & 1 for i in range(s)])
@@ -90,6 +104,13 @@ def absolute_value(bv):
     '''
     mask = bv >> (bv.size() - 1)
     return mask ^ (bv + mask)
+
+
+def z3abs(x):
+    '''
+    Absolute value for integer encoding
+    '''
+    return z3.If(x >= 0, x, -x)
 
 
 #used in testing

@@ -1,4 +1,4 @@
-PROJECT = test
+PROJECT = arduino
 
 all:
 	time python arduino.py $(PROJECT).dict $(PROJECT).kicad_pcb

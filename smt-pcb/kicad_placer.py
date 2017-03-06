@@ -46,15 +46,22 @@ def main():
     # place all components
     print "Placing all components."
     for name, module in smt_output['module_dict'].items():
-        # determine rotation
-        if module['rotation'] is not None:
-            pcb.modules[name].rotation = module['rotation']
-        if module['x'] is not None and module['y'] is not None:
-            pcb.modules[name].position =                \
-                pcb.modules[name].position              \
-                + Point(module['x'], module['y'])       \
-                + BoardUpperLeft                        \
-                - pcb.modules[name].boundingBox.ul
+        if module['type'] == 'comp':
+            # determine rotation
+            if module['rotation'] is not None:
+                pcb.modules[name].rotation = module['rotation']
+            if module['x'] is not None and module['y'] is not None:
+                pcb.modules[name].position =                \
+                    pcb.modules[name].position              \
+                    + Point(module['x'], module['y'])       \
+                    + BoardUpperLeft                        \
+                    - pcb.modules[name].boundingBox.ul
+        elif module['type'] == 'via':
+            pass
+        elif module['type'] == 'keepout':
+            pass
+        else:
+            raise Exception('Unimplemented component type.')
  
     # draw the board edge
     edge = [Point(x,y)+BoardUpperLeft for x,y in smt_output['board_edge']]

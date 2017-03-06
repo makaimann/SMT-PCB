@@ -55,6 +55,28 @@ def mm_to_inch(val):
         return [mm_to_inch(v) for v in val]
 
 
+def mm_to_mil(val):
+    """Convert from mm to mil.
+
+    Handles single values, sequences, sequences of sequences, etc.
+    """
+    try:
+        return val / 0.0254
+    except TypeError:
+        return [mm_to_mil(v) for v in val]
+
+
+def mil_to_mm(val):
+    """Convert from mil to mm.
+
+    Handles single values, sequences, sequences of sequences, etc.
+    """
+    try:
+        return val * 0.0254
+    except TypeError:
+        return [mil_to_mm(v) for v in val]
+
+
 class BaseUnitTuple(object):
     """Base class to provide mm, inch, mil properties.
 

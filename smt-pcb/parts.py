@@ -17,11 +17,6 @@ class Resistor(PcbComponent):
         self['1'].wire(p)
         self['2'].wire(n)
 
-class ResistorPack(PcbComponent):
-    def __init__(self, p, n, size='1206', **kwargs):
-        super(Resistor, self).__init__('Resistors_SMD', 'R_Array_Convex_4x'+size, **kwargs)
-        self.prefix = 'RN'
-
 class Inductor(PcbComponent):
     def __init__(self, p, n, size='0805', **kwargs):
         super(Inductor, self).__init__('Inductors_SMD', 'L_'+size, **kwargs)
@@ -186,6 +181,12 @@ class Header6x1(PcbComponent):
         self['4'].wire(pin4)
         self['5'].wire(pin5)
         self['6'].wire(pin6)
+
+class MountingHole(PcbComponent):
+    def __init__(self, pin, **kwargs): 
+        super(MountingHole, self).__init__('Mounting_Holes', 'MountingHole_3.2mm_M3', **kwargs)
+        self.prefix = 'H'
+        self['1'].wire(pin)
 
 class DualOpAmp(PcbComponent):
     def __init__(self, **kwargs):

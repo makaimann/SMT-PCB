@@ -61,7 +61,7 @@ def place_rects(smt_file_in):
     #specifies the rotation
     print('Running SMT placement algorithm.')
     start = time.time()
-    model, design = p.place(graph_struct, place_dict, 25)
+    model, design = p.place(graph_struct, place_dict, 3)
     end = time.time()
     print('Placing took', end-start, 'seconds.')
 
@@ -197,14 +197,14 @@ class PlaceGrid(object):
 
     @property
     def board_width_snapped(self):
-        return self.snap_left_x(self.width)-1
+        return self.snap_left_x(self.width)
 
     @property
     def board_height_snapped(self):
-        return self.snap_up_y(self.height)-1
+        return self.snap_up_y(self.height)
 
     def place_entry(self, module):
-        if module['x'] is not None and module['y'] is not None:
+        if module['fixed']:
             return self.fix_pos(width=module['width'], height=module['height'],
                                 x=module['x'], y=module['y'])
         else:

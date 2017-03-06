@@ -8,8 +8,9 @@
 # Demo code to generate Arduino Uno Rev3
 
 # SMT-PCB specific imports
+from kicad.units import mil_to_mm
 from kicad.point import Point
-from mycad import PcbDesign, NetClass
+from mycad import PcbDesign, NetClass, PcbVia, PcbKeepout
 from parts import *
 from math import pi
 import sys
@@ -28,7 +29,7 @@ class ArduinoUno:
     def __init__(self, dict_fname, pcb_fname):
         self.dict_fname = dict_fname
         self.pcb_fname = pcb_fname
-        self.pcb = PcbDesign(pcb_fname, width=64.516, height=53.34, dx=1, dy=1)
+        self.pcb = PcbDesign(pcb_fname, width=mil_to_mm(2700), height=mil_to_mm(2100), dx=1, dy=1)
         self.top = 2100
  
     def compile(self):   
@@ -73,6 +74,9 @@ class ArduinoUno:
         power_class = NetClass('Power', trace_width=1.0)
         power_class.add('PWRIN')
         self.pcb.add_net_class(power_class)
+
+        # Define the mounting holes
+        self.inst_mounting_holes()
 
         # Define the board edge
         print 'Defining the board edge'
@@ -193,8 +197,8 @@ class ArduinoUno:
         self.pcb.add(SPST('RESET', 'GND'))
     
         # ICSP connector
-        #self.pcb.add(ICSP(miso='MISO', sck='SCK', reset='RESET', vdd='+5V', mosi='MOSI', gnd='GND',
-        #             position=Point(2505.512, self.top-1198.031, 'mils'), mode='PIN1'))
+        self.pcb.add(ICSP(miso='MISO', sck='SCK', reset='RESET', vdd='+5V', mosi='MOSI', gnd='GND',
+                     position=Point(2505.512, self.top-1198.031, 'mils'), mode='PIN1'))
    
         # Wire Port B
         pb = atmega328.PB
@@ -281,12 +285,28 @@ class ArduinoUno:
         # Power header
         self.pcb.add(Header8x1(None, '+5V', 'RESET', '+3V3', '+5V', 'GND', 'GND', 'VIN',
                      position=Point(1100, self.top-100, 'mils'), rotation=pi/2.0, mode='PIN1'))
+
+    def inst_mounting_holes(self):
+        # drill = mil_to_mm(125)
+        # size = drill+mil_to_mm(8)
+        # self.pcb.add(PcbVia(position=Point(600, self.top-2000, 'mils'), size=size, drill=drill))
+        # self.pcb.add(PcbVia(position=Point(550, self.top-100, 'mils'), size=size, drill=drill))
+        # self.pcb.add(PcbVia(position=Point(2600, self.top-1400, 'mils'), size=size, drill=drill))
+        # self.pcb.add(PcbVia(position=Point(2600, self.top-300, 'mils'), size=size, drill=drill))
+        pass
     
     def define_edge(self):
+        # create list of points representing the board edge
         points = [(0, 0), (0, 2100), (2540, 2100), (2600, 2040), (2600, 1590), 
                   (2700, 1490), (2700, 200), (2600, 100), (2600, 0), (0, 0)]
         points = [Point(x, self.top-y, 'mils') for x,y in points]
         self.pcb.edge = points
+
+        # block off the parts of the board that aren't allowed
+        self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2600), height=mil_to_mm(2100-1490),
+                     position=Point(2600, self.top-2100, 'mils')))
+        self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2600), height=mil_to_mm(200-0),
+                     position=Point(2600, self.top-200, 'mils')))
 
 if __name__=='__main__':
     main()

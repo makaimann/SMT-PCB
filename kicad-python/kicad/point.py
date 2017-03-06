@@ -93,16 +93,18 @@ class Point(units.BaseUnitTuple):
         
         # determine the units conversion factor
         if unit.lower() == 'mm':
-            scale_factor = 1.0
+            x_in_mm = x
+            y_in_mm = y
         elif unit.lower() in ['mil', 'mils']:
-            scale_factor = 0.0254
+            x_in_mm = units.mil_to_mm(x)
+            y_in_mm = units.mil_to_mm(y)
         else:   
             raise Exception('Unsupported unit type.')
 
         # create the point object
         self._class = Point
-        self._obj = pcbnew.wxPoint(scale_factor * x * units.DEFAULT_UNIT_IUS,
-                                   scale_factor * y * units.DEFAULT_UNIT_IUS)
+        self._obj = pcbnew.wxPoint(x_in_mm * units.DEFAULT_UNIT_IUS,
+                                   y_in_mm * units.DEFAULT_UNIT_IUS)
 
     @property
     def x(self):

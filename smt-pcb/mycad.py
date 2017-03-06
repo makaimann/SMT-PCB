@@ -75,6 +75,9 @@ class PcbDesign(object):
         self.width = width
         self.height = height
         self.refdes_max_count = refdes_max_count
+        self.refdes_set = set()
+        self.keepouts = []
+        self.vias = []
 
     def __contains__(self, item):
         return item in self.comp_dict
@@ -90,18 +93,28 @@ class PcbDesign(object):
         return self.comp_dict[key]
 
     def add(self, component):
-        component.parent = self
-        component.name = self.nextRefdes(component.prefix)
-        self[component.name] = component
+        if isinstance(component, PcbComponent):
+            component.parent = self
+            component.name = self.nextRefdes(component.prefix)
+            self[component.name] = component
+        elif isinstance(component, PcbVia):
+            component.name = self.nextRefdes(component.prefix)
+            self.vias.append(component)
+        elif isinstance(component, PcbKeepout):
+            component.name = self.nextRefdes(component.prefix)
+            self.keepouts.append(component)
+        else:
+            raise Exception('Component type not handled.')
 
     def add_net_class(self, net_class):
         self.net_class_list.append(net_class)
 
     def nextRefdes(self, prefix):
         for count in range(1, self.refdes_max_count+1):
-            name = prefix + str(count)
-            if name not in self:
+            name = unicode(prefix + str(count))
+            if name not in self.refdes_set:
                 break
+        self.refdes_set.add(name)
         return name
 
     def wire(self, net_name, *args):
@@ -130,6 +143,10 @@ class PcbDesign(object):
             for pad in comp:
                 if pad.net_name is not None:
                     design_dict[comp.name][pad.name] = pad.net_name
+        for via in self.vias:
+            design_dict[via.name] = {}
+        for keepout in self.keepouts:
+            design_dict[keepout.name] = {}
         return design_dict
 
     def get_module_dict(self):
@@ -147,10 +164,9 @@ class PcbDesign(object):
         
             # set fixed position if provided
             if comp.position is not None:
-                if comp.mode == 'UL':
-                    module_dict[comp.name]['x'] = comp.position.x
-                    module_dict[comp.name]['y'] = comp.position.y
-                elif comp.mode == 'PIN1':
+                if comp.mode.lower() == 'ul':
+                    ul_relative = Point(0,0)
+                elif comp.mode.lower() == 'pin1':
                     # TODO: make it easier to extract PIN1
         
                     # Extract the coordinates of PIN1 of the object
@@ -160,11 +176,19 @@ class PcbDesign(object):
                             break
 
                     # Compute the position of the upper-left corner of the device
-                    pos = comp.position + comp.boundingBox.ul - pin1_center
-
-                    # Store result in the module dictionary
-                    module_dict[comp.name]['x'] = pos.x
-                    module_dict[comp.name]['y'] = pos.y
+                    ul_relative = comp.boundingBox.ul - pin1_center
+                elif comp.mode.lower() == 'center':
+                    comp_center = Point.wrap(comp.module._obj.GetCenter())
+                    ul_relative = comp.boundingBox.ul - comp_center
+                else:
+                    raise Exception('Unimplemented positioning mode.')
+                
+                # compute fixed position of upper-left corner of device
+                fixed_pos = comp.position + ul_relative
+    
+                # store result in SMT input dictionary
+                module_dict[comp.name]['x'] = fixed_pos.x
+                module_dict[comp.name]['y'] = fixed_pos.y
                 module_dict[comp.name]['fixed'] = True
             else:
                 module_dict[comp.name]['x'] = None
@@ -174,6 +198,27 @@ class PcbDesign(object):
             # add size information
             module_dict[comp.name]['width'] = comp.width
             module_dict[comp.name]['height'] = comp.height
+    
+            # add type information
+            module_dict[comp.name]['type'] = 'comp'
+
+        for via in self.vias:
+            module_dict[via.name] = {}
+            module_dict[via.name]['x'] = via.position.x - via.size/2.0
+            module_dict[via.name]['y'] = via.position.y - via.size/2.0
+            module_dict[via.name]['width'] = via.size
+            module_dict[via.name]['height'] = via.size
+            module_dict[via.name]['fixed'] = True
+            module_dict[via.name]['type'] = 'via'
+        
+        for keepout in self.keepouts:
+            module_dict[keepout.name] = {}
+            module_dict[keepout.name]['x'] = keepout.position.x
+            module_dict[keepout.name]['y'] = keepout.position.y
+            module_dict[keepout.name]['width'] = keepout.width
+            module_dict[keepout.name]['height'] = keepout.height
+            module_dict[keepout.name]['fixed'] = True
+            module_dict[keepout.name]['type'] = 'keepout'
 
         return module_dict
 
@@ -336,3 +381,17 @@ class NetClass(object):
 
         # Return the full command
         return cmd
+
+class PcbVia(object):
+    def __init__(self, position, size, drill):
+        self.position = position
+        self.size = size
+        self.drill = drill
+        self.prefix = 'V'
+
+class PcbKeepout(object):
+    def __init__(self, position, width, height):
+        self.position = position
+        self.width = width
+        self.height = height
+        self.prefix = 'K'
