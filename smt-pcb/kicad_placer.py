@@ -10,29 +10,31 @@
 # general imports
 from ast import literal_eval
 import sys
+import json
 
 # project imports
 from kicad.pcbnew.board import Board
+from kicad.pcbnew.via import Via
 from kicad.point import Point
 from mycad import BoardTools
 
 def main():
     # read command-line arguments
-    dict_fname = sys.argv[1]
+    json_fname = sys.argv[1]
     pcb_fname = sys.argv[2]
 
-    # title block center
-    # TODO: read this from the title block object
-    disp_center_x = 150.0
-    disp_center_y = 100.0
-    
     # read board placement from SMT-PCB
     print "Reading output from SMT engine."
-    with open(dict_fname, 'r') as f:
-        smt_output = literal_eval(f.read())
-    
+    with open(json_fname, 'r') as f:
+        smt_output = json.load(f)
+
     # load board
     pcb = Board.load(pcb_fname)
+   
+    # title block center (assuming A4 paper)
+    # TODO: handle paper sizes other than A4
+    disp_center_x = 297/2.0
+    disp_center_y = 210/2.0
     
     # try to center components on board
     xmid = 0.5*smt_output['width']
@@ -57,7 +59,9 @@ def main():
                     + BoardUpperLeft                        \
                     - pcb.modules[name].boundingBox.ul
         elif module['type'] == 'via':
-            pass
+            coord = Point(module['xc'], module['yc']) + BoardUpperLeft
+            via = Via(coord=coord, diameter=module['size'], drill=module['drill'])
+            pcb.add(via)
         elif module['type'] == 'keepout':
             pass
         else:

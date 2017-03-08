@@ -23,7 +23,7 @@ from kicad import Size
 from kicad.pcbnew.item import HasPosition
 from kicad.pcbnew.net import Net
 from enum import IntEnum
-from kicad.point import BoundingBox
+from kicad.point import BoundingBox, Point
 
 class DrillShape(IntEnum):
     Circle = pcbnew.PAD_DRILL_SHAPE_CIRCLE
@@ -107,6 +107,10 @@ class Pad(HasPosition, object):
 
         else: # value is a single number/integer
             self._obj.SetSize(Size(value, value).native_obj)
+
+    @property
+    def center(self):
+        return Point.wrap(self._obj.GetCenter())
 
     @property
     def boundingBox(self):

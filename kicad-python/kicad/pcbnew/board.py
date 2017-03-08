@@ -60,16 +60,16 @@ class _NetList(object):
         nets = self._board._obj.GetNetsByName()
         found = nets.find(key).value()[1]
         if found:
-            return net.Net.wrap(found)
+            return Net.wrap(found)
         else:
             raise KeyError("No net with name: %s" % key)
 
     def __iter__(self):
-        for n in self._board._obj.GetNets():
-            yield net.Net.wrap(n)
+        for netname, net in self._board._obj.GetNetsByName().items():
+            yield Net.wrap(net)
 
     def __len__(self):
-        return self._board._obj.GetNets().GetCount()
+        return self._board._obj.GetNetCount()
 
 class Board(object):
     def __init__(self, wrap=None):
@@ -98,6 +98,58 @@ class Board(object):
         """
         self._obj.Add(obj.native_obj)
         return obj
+
+    @property
+    def comments(self):
+        titleBlock = self._obj.GetTitleBlock()
+        comment4 = titleBlock.GetComment4()
+        comment3 = titleBlock.GetComment3()
+        comment2 = titleBlock.GetComment2()
+        comment1 = titleBlock.GetComment1()
+        return [comment4, comment3, comment2, comment1]
+
+    @comments.setter
+    def comments(self, value):
+        # Pad comments with empty lines as necessary
+        comments = value + ['']*(4-len(value))
+        
+        titleBlock = self._obj.GetTitleBlock()
+        titleBlock.SetComment4(comments[0])
+        titleBlock.SetComment3(comments[1])
+        titleBlock.SetComment2(comments[2])
+        titleBlock.SetComment1(comments[3])
+
+    @property
+    def date(self):
+        return self._obj.GetTitleBlock().GetDate()
+
+    @date.setter
+    def date(self, value):
+        return self._obj.GetTitleBlock().SetDate(value.ctime())
+
+    @property
+    def company(self):
+        return self._obj.GetTitleBlock().GetCompany()
+
+    @company.setter
+    def company(self, value):
+        return self._obj.GetTitleBlock().SetCompany(value)
+
+    @property
+    def revision(self):
+        return self._obj.GetTitleBlock().GetRevision()
+
+    @revision.setter
+    def revision(self, value):
+        return self._obj.GetTitleBlock().SetRevision(value)
+    
+    @property
+    def title(self):
+        return self._obj.GetTitleBlock().GetTitle()
+
+    @title.setter
+    def title(self, value):
+        return self._obj.GetTitleBlock().SetTitle(value)
 
     @property
     def modules(self):

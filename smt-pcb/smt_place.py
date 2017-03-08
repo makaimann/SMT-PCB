@@ -12,6 +12,7 @@ from ast import literal_eval
 import math
 import sys
 import time
+import json
 
 # SMT-PCB specific imports
 from design import Design, Fabric
@@ -19,11 +20,11 @@ import placer
 
 def main():
     # read command-line arguments
-    dict_fname = sys.argv[1]
+    json_fname = sys.argv[1]
 
-    model, design, smt_dict = place_rects(smt_file_in=dict_fname)
+    model, design, smt_dict = place_rects(smt_file_in=json_fname)
     #print_mesh(model, design)
-    write_placement(model, design, smt_dict, smt_file_out=dict_fname)
+    write_placement(model, design, smt_dict, smt_file_out=json_fname)
 
 def place_rects(smt_file_in):
     ''' 
@@ -36,7 +37,7 @@ def place_rects(smt_file_in):
 
     # read in SMT input
     with open(smt_file_in, 'r') as f:
-        smt_dict = literal_eval(f.read())
+        smt_dict = json.load(f)
 
     # create the placer grid
     grid = PlaceGrid(width=smt_dict['width'], height=smt_dict['height'],
@@ -128,7 +129,7 @@ def write_placement(model, design, smt_dict, smt_file_out):
             raise Exception('Unimplemented rotation')
 
     with open(smt_file_out, 'w') as f:
-        f.write(repr(smt_dict))
+        json.dump(smt_dict, f)
 
 def get_refdes(s):
     # removes the underscore and extra text that

@@ -17,20 +17,30 @@ import sys
 
 def main():
     # read command-line arguments
-    dict_fname = sys.argv[1]
+    json_fname = sys.argv[1]
     pcb_fname = sys.argv[2]
 
     # build Arduino design
-    uno = ArduinoUno(dict_fname, pcb_fname)
+    uno = ArduinoUno(json_fname, pcb_fname)
     uno.compile()
 
 class ArduinoUno:
     
-    def __init__(self, dict_fname, pcb_fname):
-        self.dict_fname = dict_fname
+    def __init__(self, json_fname, pcb_fname):
+        # Files used for I/O
+        self.json_fname = json_fname
         self.pcb_fname = pcb_fname
-        self.pcb = PcbDesign(pcb_fname, width=mil_to_mm(2700), height=mil_to_mm(2100), dx=1, dy=1)
+
+        # Convenience variable, stores the top of the board in mils
+        # using the coordinate system of the mechanical drawing
         self.top = 2100
+
+        # Create PCB
+        self.pcb = PcbDesign(pcb_fname, dx=1, dy=1)
+        self.pcb.title = 'SMT-PCB Arduino Uno'
+        self.pcb.comments = ['Authors:', 'Steven Herbst <sherbst@stanford.edu>', 'Makai Mann <makaim@stanford.edu>']
+        self.pcb.company = 'Stanford University'
+        self.pcb.revision = '1'
  
     def compile(self):   
 
@@ -85,7 +95,7 @@ class ArduinoUno:
         # put the parts on the board and save
         print 'Compiling PCB'
         critical_nets = ['D+','D-']
-        self.pcb.compile(critical_nets=critical_nets, smt_file_in=self.dict_fname)
+        self.pcb.compile(critical_nets=critical_nets, smt_file_in=self.json_fname)
 
     def inst_usb(self):
         # USB B connector
@@ -287,13 +297,14 @@ class ArduinoUno:
                      position=Point(1100, self.top-100, 'mils'), rotation=pi/2.0, mode='PIN1'))
 
     def inst_mounting_holes(self):
-        # drill = mil_to_mm(125)
-        # size = drill+mil_to_mm(8)
+        drill = mil_to_mm(125)
+        size = drill+mil_to_mm(8)
+
+        # vias can't be placed yet because they're too close to other fixed parts
         # self.pcb.add(PcbVia(position=Point(600, self.top-2000, 'mils'), size=size, drill=drill))
         # self.pcb.add(PcbVia(position=Point(550, self.top-100, 'mils'), size=size, drill=drill))
         # self.pcb.add(PcbVia(position=Point(2600, self.top-1400, 'mils'), size=size, drill=drill))
         # self.pcb.add(PcbVia(position=Point(2600, self.top-300, 'mils'), size=size, drill=drill))
-        pass
     
     def define_edge(self):
         # create list of points representing the board edge
@@ -302,7 +313,7 @@ class ArduinoUno:
         points = [Point(x, self.top-y, 'mils') for x,y in points]
         self.pcb.edge = points
 
-        # block off the parts of the board that aren't allowed
+        # TODO: automatically determine keepouts
         self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2600), height=mil_to_mm(2100-1490),
                      position=Point(2600, self.top-2100, 'mils')))
         self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2600), height=mil_to_mm(200-0),

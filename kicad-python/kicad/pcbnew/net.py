@@ -33,3 +33,7 @@ class Net(object):
     @property
     def name(self):
         return str(self._obj.GetNetname())
+
+    @property
+    def netcode(self):
+        return self._obj.GetNet()

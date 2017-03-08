@@ -11,8 +11,10 @@ import random
 from kicad.pcbnew.module import Module
 from kicad.pcbnew.board import Board 
 from kicad.point import Point
+from datetime import date
 import pcbnew
 import math
+import json
 from pcbparser import PcbParser
 
 class BoardTools(object):
@@ -66,18 +68,22 @@ class BoardTools(object):
         return net_dict
 
 class PcbDesign(object):
-    def __init__(self, fname, dx=1.0, dy=1.0, width=25.0, height=25.0, refdes_max_count=1000):
+    def __init__(self, fname, dx=1.0, dy=1.0, refdes_max_count=1000):
         self.fname = fname
         self.comp_dict = {}
         self.net_class_list = []
         self.dx = dx
         self.dy = dy
-        self.width = width
-        self.height = height
         self.refdes_max_count = refdes_max_count
         self.refdes_set = set()
         self.keepouts = []
         self.vias = []
+
+        self.comments = None
+        self.title = None
+        self.revision = None
+        self.company = None
+        self.date = date.today()
 
     def __contains__(self, item):
         return item in self.comp_dict
@@ -129,6 +135,18 @@ class PcbDesign(object):
         for comp in self:
             pcb.add(comp.module) 
 
+        # make title block
+        if self.comments:
+            pcb.comments = self.comments
+        if self.title:
+            pcb.title = self.title
+        if self.revision:
+            pcb.revision = self.revision
+        if self.company:
+            pcb.company = self.company
+        if self.date:
+            pcb.date = self.date
+
         # save PCB file without connectivity information
         pcb.save(self.fname)
 
@@ -167,16 +185,9 @@ class PcbDesign(object):
                 if comp.mode.lower() == 'ul':
                     ul_relative = Point(0,0)
                 elif comp.mode.lower() == 'pin1':
-                    # TODO: make it easier to extract PIN1
-        
-                    # Extract the coordinates of PIN1 of the object
-                    for p in comp.module._obj.Pads():
-                        if p.GetPadName() == '1':
-                            pin1_center = Point.wrap(p.GetCenter())
-                            break
-
                     # Compute the position of the upper-left corner of the device
-                    ul_relative = comp.boundingBox.ul - pin1_center
+                    # relative to PIN1
+                    ul_relative = comp.boundingBox.ul - comp['1'].pad.center
                 elif comp.mode.lower() == 'center':
                     comp_center = Point.wrap(comp.module._obj.GetCenter())
                     ul_relative = comp.boundingBox.ul - comp_center
@@ -210,6 +221,12 @@ class PcbDesign(object):
             module_dict[via.name]['height'] = via.size
             module_dict[via.name]['fixed'] = True
             module_dict[via.name]['type'] = 'via'
+
+            # extra information needed to produce the via
+            module_dict[via.name]['xc'] = via.position.x
+            module_dict[via.name]['yc'] = via.position.y
+            module_dict[via.name]['drill'] = via.drill
+            module_dict[via.name]['size'] = via.size 
         
         for keepout in self.keepouts:
             module_dict[keepout.name] = {}
@@ -221,6 +238,17 @@ class PcbDesign(object):
             module_dict[keepout.name]['type'] = 'keepout'
 
         return module_dict
+
+    @property 
+    def edge(self):
+        return self.edge_points
+
+    @edge.setter
+    def edge(self, value):
+        self.edge_points = value
+        self.width = max([point[0] for point in self.edge_points])
+        self.height = max([point[1] for point in self.edge_points])
+        print 'Detected PCB width=%0.3fmm, height=%0.3fmm' % (self.width, self.height)
 
     def write_smt_input(self, critical_nets, smt_file_in):
         smt_input = {}
@@ -242,7 +270,7 @@ class PcbDesign(object):
         smt_input['board_edge'] = [(p.x, p.y) for p in self.edge]
 
         with open(smt_file_in, 'w') as f:
-            f.write(repr(smt_input)+'\n')
+            json.dump(smt_input, f)
 
 class PcbPad(object):
     def __init__(self, pad):
@@ -251,7 +279,7 @@ class PcbPad(object):
 
     def wire(self, net_name):
         self.net_name = net_name
-
+    
     @property
     def name(self):
         return self.pad.name

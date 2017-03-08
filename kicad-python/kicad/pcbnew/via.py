@@ -24,12 +24,11 @@ from kicad import units
 from kicad.pcbnew.item import HasPosition
 
 class Via(HasPosition, object):
-    def __init__(self, coord, layer_pair, diameter, drill, board=None):
+    def __init__(self, coord, diameter, drill, board=None, 
+                 layer_pair=('F.Cu', 'B.Cu'), via_type='through'):
         self._obj = pcbnew.VIA(board and board.native_obj)
-        self.diameter = diameter
-        coord_point = Point.build_from(coord)
-        self._obj.SetEnd(coord_point.native_obj)
-        self._obj.SetStart(coord_point.native_obj)
+
+        # define the layers used
         if board:
             self._obj.SetLayerPair(board.get_layer(layer_pair[0]),
                                    board.get_layer(layer_pair[1]))
@@ -37,6 +36,23 @@ class Via(HasPosition, object):
             self._obj.SetLayerPair(layer.get_std_layer(layer_pair[0]),
                                    layer.get_std_layer(layer_pair[1]))
 
+        # define the position
+        self._obj.SetPosition(coord.native_obj)
+
+        # define the via type
+        if via_type.lower() == 'through':
+            self._obj.SetViaType(pcbnew.VIA_THROUGH)
+        elif via_type.lower() == 'blind_buried':
+            self._obj.SetViaType(pcbnew.VIA_BLIND_BURIED)
+        elif via_type.lower() == 'microvia':
+            self._obj.SetViaType(pcbnew.VIA_MICROVIA)
+        else:
+            raise Exception('Unimplemented via type.')
+
+        # Define overall via diameter (drill + annular ring)
+        self.diameter = diameter
+
+        # Define the drill size
         self.drill = drill
 
     @property

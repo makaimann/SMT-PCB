@@ -16,13 +16,13 @@ class PcbParser(object):
         return '(' + s + ')'
 
     @staticmethod
-    def format(s,level=0):
+    def format(s, level=0):
         # set the indent level for readability
         indent = ' '*level
 
-        if isinstance(s,str):
+        if isinstance(s, basestring):
             return indent + s + '\n'
-        elif all(isinstance(x,str) for x in s):
+        elif all(isinstance(x, basestring) for x in s):
             return indent + PcbParser.formatFlat(s) + '\n'
         else:
             out = indent + '(' + s[0] + '\n'
