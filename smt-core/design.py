@@ -275,7 +275,7 @@ class Design(NamedIDObject):
         self._p_constraints = ValidContainer()
         self._cg = dict()
         self._opt = dict()
-        self._pinned_comps = dict()
+        self._pinned_comps = []
 
         self._r_constraints = ValidContainer()
         self._rcg = dict()
@@ -301,7 +301,7 @@ class Design(NamedIDObject):
             height = comp_dict['height']
             if comp_dict['x'] is not None and comp_dict['y'] is not None:
                 self._comps[name] = Component(name, True, width, height, comp_dict['x'], comp_dict['y'])
-                self._pinned_comps[name] = self._comps[name]
+                self._pinned_comps.append(name)
             else:
                 self._comps[name] = Component(name, False, width, height)
 

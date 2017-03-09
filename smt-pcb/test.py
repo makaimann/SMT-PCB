@@ -1,29 +1,32 @@
 #!/usr/bin/env python
 
-# Steven Herbst
-# sherbst@stanford.edu
-#
-# CS448H Winter 2017
+import z3
+import design
+import position
+import constraints
 
-# Demo code to generate Arduino Uno Rev3
+place_dims = {'height' : 4, 'width' : 4}
+comps_list = [{'name' : 'n1', 'width' : 2, 'height' : 1, 'x' : 0, 'y' : 0},
+                         {'name' : 'n2', 'width' : 2, 'height' : 1, 'x' : None, 'y' : None}]
+routing_list = [{'comp1' : 'n1', 'comp2' : 'n2', 'pad1x' : 2, 'pad1y' : 0, 'pad2x' : 0, 'pad2y' : 0, 'max_length' : 1}]
 
-# SMT-PCB specific imports
-from mycad import PcbDesign, NetClass
-from parts import *
-from math import pi
+fab = design.Fabric(place_dims)
 
-def main():
-    # create object to hold PCB design
-    pcb = PcbDesign('test.kicad_pcb', width=10, height=10, dx=1, dy=1)
-    
-    # LEDs
-    pcb.add(Resistor('+5V', 'TXLED_R'))
-    pcb.add(Resistor('+5V', 'RXLED_R'))
-    pcb.add(LED('TXLED_R', 'TXLED'))
-    pcb.add(LED('RXLED_R', 'RXLED'))
+d = design.Design(comps_list, routing_list, fab, position.RotIntXY)
+d.add_constraint_generator('no_overlap', constraints.no_overlap)
+d.add_pad_cg('max_dist', constraints.pad_max_dists)
 
-    # put the parts on the board and save
-    pcb.compile(critical_nets=['+5V'])
+s = z3.Solver()
 
-if __name__=='__main__':
-    main()
+s.add(d.constraints)
+
+result = s.check()
+
+if result:
+    print('SAT')
+    for comp in d.components:
+        loc = comp.pos.get_coordinates(s.model())
+        rad = comp.pos.get_rotation(s.model())
+        print('{} x = {} y = {} rot = {}'.format(comp.name, loc[0], loc[1], rad))
+else:
+    print('UNSAT')

@@ -1,5 +1,5 @@
-# PROJECT = arduino
-PROJECT = simple
+PROJECT = arduino
+# PROJECT = simple
 
 all:
 	time python $(PROJECT).py $(PROJECT).json $(PROJECT).kicad_pcb
