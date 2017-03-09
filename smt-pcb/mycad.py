@@ -127,7 +127,7 @@ class PcbDesign(object):
         for arg in args:
             arg.wire(net_name)
 
-    def compile(self, critical_nets=None, smt_file_in=None):
+    def compile(self, smt_file_in=None):
         # Create empty PCB
         pcb = Board()
 
@@ -151,7 +151,7 @@ class PcbDesign(object):
         pcb.save(self.fname)
 
         # write input file for SMT solver
-        self.write_smt_input(critical_nets, smt_file_in)
+        self.write_smt_input(smt_file_in)
 
     def get_design_dict(self):
         design_dict = {}
@@ -250,14 +250,14 @@ class PcbDesign(object):
         self.height = max([point[1] for point in self.edge_points])
         print 'Detected PCB width=%0.3fmm, height=%0.3fmm' % (self.width, self.height)
 
-    def write_smt_input(self, critical_nets, smt_file_in):
+    def write_smt_input(self, smt_file_in):
         smt_input = {}
         smt_input['dx'] = self.dx
         smt_input['dy'] = self.dy
         smt_input['width'] = self.width
         smt_input['height'] = self.height
         smt_input['module_dict'] = self.get_module_dict()
-        smt_input['critical_nets'] = critical_nets
+        smt_input['routing_list'] = self.routing_list
         smt_input['design_dict'] = self.get_design_dict()
 
         # add net class list information since this will have to

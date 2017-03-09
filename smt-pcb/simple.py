@@ -56,8 +56,8 @@ class Simple:
         self.pcb.edge = [Point(0,0), Point(14,0), Point(14,14), Point(0,14), Point(0,0)]
 
         print 'Compiling PCB'
-        critical_nets = ['V1','V2', 'V3']
-        self.pcb.compile(critical_nets=critical_nets, smt_file_in=self.json_fname)
+        self.pcb.routing_list = []
+        self.pcb.compile(smt_file_in=self.json_fname)
 
 if __name__=='__main__':
     main()
