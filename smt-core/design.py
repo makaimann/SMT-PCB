@@ -8,21 +8,24 @@ import traceback
 from classutil import IDObject, NamedIDObject, ValidContainer
 
 class Fabric:
-    def __init__(self, dims, wire_lengths={1}, W=2, Fc=None, Fs=None, node_masks=None, model = None):
+    def __init__(self, place_dims, wire_lengths={1}, W=2, Fc=None, Fs=None, node_masks=None, model = None):
         '''
             dims := The dimensions of the fabric
             wire_lengths := the length of wires between switch boxes
             All other operands are unimplemented
         '''
-        super().__init__()
-        if not isinstance(dims, Iterable):
-            raise TypeError('dims must be iterable, recieved type {}'.format(type(dims)))
-        dims = tuple(dims)
+        #super().__init__()
+        #if not isinstance(dims, Iterable):
+        #    raise TypeError('dims must be iterable, recieved type {}'.format(type(dims)))
+        #dims = tuple(dims)
 
-        if len(dims) != 2:
-            raise ValueError('dims must be of length 2, received object of length {}'.format(len(dims)))
+        #if len(dims) != 2:
+        #    raise ValueError('dims must be of length 2, received object of length {}'.format(len(dims)))
 
-        self._dims = dims
+        if 'height' not in place_dims or 'width' not in place_dims:
+            raise ValueError('place_dims must contain a height and a width')
+
+        self._dims = (place_dims['height'], place_dims['width'])
         self._syn_dims = (z3.Int('rows'), z3.Int('cols'))
         self._wire_lengths = set(wire_lengths)
         self._W = W
@@ -118,9 +121,9 @@ class Fabric:
         raise NotImplementedError('This feature is not supported')
 
 
-class Component(NamedIDObject):
-    def __init__(self, name, width=None, height=None, inputs=(), outputs=(), pos=None):
-        super().__init__(name)
+class Component():
+    def __init__(self, name, fixed_flag, width=None, height=None, inputs=(), outputs=(), pos=None):
+        self._name = name
         self._pos = pos
         self._inputs = set(inputs)
         self._outputs = set(outputs)
@@ -132,7 +135,15 @@ class Component(NamedIDObject):
         self._degree = 0
         self._width = width
         self._height = height
+        self._fixed = fixed_flag
 
+
+    @property
+    def name(self):
+        '''
+            returns the component's name
+        '''
+        return self._name
 
     @property
     def inputs(self):
@@ -166,6 +177,10 @@ class Component(NamedIDObject):
     @property
     def height(self):
         return self._height
+
+    @property
+    def is_fixed(self):
+        return self._fixed
 
     @property
     def in_degree(self):
@@ -217,12 +232,12 @@ class Wire(IDObject):
         return '{} -[{}]-> {}'.format(self.src.name, self.width, self.dst.name)
 
 class Design(NamedIDObject):
-    def __init__(self, adj_dict, fabric, position_type, pinned_comps=None, name='', constraint_generators=(), optimizers=()):
+    def __init__(self, comp_list, routing_list, fabric, position_type, name='', constraint_generators=(), optimizers=()):
         '''
         adj_dict :: {str : [(str, int)]}
         adj_dict[x] := out edges of x with the their width
         fabric :: Fabric
-        position_type ::  str -> Frabric -> PositionBase
+        position_type ::  str -> Fabric -> PositionBase
 
         constraints_gen :: [([Component] -> [Wire] -> fabric -> z3.Bool)]
         constraint_generators := an iterable of keys, functions that generate hard
@@ -241,7 +256,8 @@ class Design(NamedIDObject):
         self._fabric = fabric
         self._position_type = position_type
 
-        self._adj_dict = adj_dict #is kinda redundent to keep this around but it might be useful
+        self._comp_list = comp_list #is kinda redundant to keep this around but it might be useful
+        self._routing_list = routing_list
 
         self._comps = dict()
         self._wires = dict()
@@ -249,7 +265,10 @@ class Design(NamedIDObject):
         self._p_constraints = ValidContainer()
         self._cg = dict()
         self._opt = dict()
-        self._pinned_comps = pinned_comps
+        self._pinned_comps = dict()
+
+        self._r_constraints = ValidContainer()
+        self._rcg = dict()
 
         self._max_degree = 0
 
@@ -266,35 +285,44 @@ class Design(NamedIDObject):
         #reset constraints
         self._reset_constraints()
 
-        for src_name, adj_list in self._adj_dict.items():
-            if not isinstance(src_name, str):
-                raise TypeError('component_graph must be a dictionary of str to [(str, int)]')
+        for comp_dict in self._comp_list:
+            name = comp_dict['name']
+            width = comp_dict['width']
+            height = comp_dict['height']
+            if comp_dict['x'] is not None and comp_dict['y'] is not None:
+                self._comps[name] = Component(name, True, width, height)
+                self._pinned_comps[name] = self._comps[name]
+            else:
+                self._comps[name] = Component(name, False, width, height)
+                
+            #if not isinstance(src_name, str):
+            #    raise TypeError('component_graph must be a dictionary of str to [(str, int)]')
 
-            if src_name not in self._comps:
-                if self._pinned_comps:
-                    self._comps[src_name] = Component(src_name, self._pinned_comps[src_name][0][0], self._pinned_comps[src_name][0][1])
-                else:
-                    self._comps[src_name] = Component(src_name)
-            src = self._comps[src_name]
+            #if src_name not in self._comps:
+            #    if self._pinned_comps:
+            #        self._comps[src_name] = Component(src_name, self._pinned_comps[src_name][0][0], self._pinned_comps[src_name][0][1])
+            #    else:
+            #        self._comps[src_name] = Component(src_name)
+            #src = self._comps[src_name]
 
-            for pair in adj_list:
-                if not isinstance(pair, tuple) or len(pair) != 2:
-                    raise TypeError('component_graph must be a dictionary of str to [(str, int)]')
+            #for pair in adj_list:
+            #    if not isinstance(pair, tuple) or len(pair) != 2:
+            #        raise TypeError('component_graph must be a dictionary of str to [(str, int)]')
 
-                dst_name = pair[0]
-                width = pair[1]
-                if not isinstance(dst_name, str) or not isinstance(width, int):
-                    raise TypeError('component_graph must be a dictionary of str to [(str, int)]')
+            #    dst_name = pair[0]
+            #    width = pair[1]
+            #    if not isinstance(dst_name, str) or not isinstance(width, int):
+            #        raise TypeError('component_graph must be a dictionary of str to [(str, int)]')
 
-                if dst_name not in self._comps:
-                    if self._pinned_comps:
-                        self._comps[dst_name] = Component(dst_name, self._pinned_comps[dst_name][0][0], self._pinned_comps[dst_name][0][1])
-                    else:
-                        self._comps[dst_name] = Component(dst_name)
+            #    if dst_name not in self._comps:
+            #        if self._pinned_comps:
+            #            self._comps[dst_name] = Component(dst_name, self._pinned_comps[dst_name][0][0], self._pinned_comps[dst_name][0][1])
+            #        else:
+            #            self._comps[dst_name] = Component(dst_name)
 
-                dst = self._comps[dst_name]
+            #    dst = self._comps[dst_name]
 
-                self._wires[(src_name, dst_name)] = Wire(src, dst, width)
+            #    self._wires[(src_name, dst_name)] = Wire(src, dst, width)
 
         #need to generate positons for each component
         self._gen_pos()
@@ -339,9 +367,9 @@ class Design(NamedIDObject):
     def constraints(self):
         '''returns all hard constraints'''
         if self._pinned_comps:
-            return z3.And(self.p_constraints, self.g_constraints, self.o_constraints, self.pinned_constraints)
+            return z3.And(self.p_constraints, self.g_constraints, self.o_constraints, self.r_constraints, self.pinned_constraints)
         else:
-            return z3.And(self.p_constraints, self.g_constraints, self.o_constraints)
+            return z3.And(self.p_constraints, self.g_constraints, self.o_constraints, self.r_constraints)
 
     @property
     def max_degree(self):
@@ -374,7 +402,8 @@ class Design(NamedIDObject):
         if not self._p_constraints.valid:
             cl = []
             for c in self.components:
-                cl.append(c.pos.invariants)
+                if not c.is_fixed:
+                    cl.append(c.pos.invariants)
             self._p_constraints.data = z3.And(*cl)
 
         return self._p_constraints.data
@@ -390,8 +419,8 @@ class Design(NamedIDObject):
                 if self._pinned_comps[src_name][1][0] is not None and self._pinned_comps[src_name][1][1] is not None:
                     c.append(self._comps[src_name].pos.x == self._position_type.pos_repr(self._pinned_comps[src_name][1][0]))
                     c.append(self._comps[src_name].pos.y == self._position_type.pos_repr(self._pinned_comps[src_name][1][1]))
-                    c.append(self._comps[src_name].pos.horiz_var == self._comps[src_name].pos.dim1)
-                    c.append(self._comps[src_name].pos.vert_var == self._comps[src_name].pos.dim2)
+                    c.append(self._comps[src_name].pos.horiz_var == self._comps[src_name].pos.width)
+                    c.append(self._comps[src_name].pos.vert_var == self._comps[src_name].pos.height)
             return z3.And(c)
         else:
             return []    
@@ -469,3 +498,29 @@ class Design(NamedIDObject):
     def _reset_o_constraints(self):
         for _,c,_ in self._opt.values():
             c.mark_invalid()
+
+    '''
+        -----------------------------------------------------------------------
+        Pad-Routing Related Stuff
+        -----------------------------------------------------------------------
+    '''
+    
+    def add_pad_cg(self, k, f):
+        '''
+            Adds a constraint generator for pad-level connectivity
+        '''
+        self._rcg[k] = (f, ValidContainer())
+
+
+    def remove_pad_cg(self, k):
+        del self._rcg[k]
+
+
+    @property
+    def r_constraints(self):
+        cl = []
+        for k,(f, c) in self._rcg.items():
+            if not c.valid:
+                c.data = f(self._comps, self._routing_list)
+            cl.append(c.data)
+        return z3.And(cl)

@@ -161,9 +161,28 @@ def no_overlap(components, wires, fabric):
     c = []
     for i in range(0, len(comps)):
         for j in range(i+1, len(comps)):
-            c.append(z3.Or(comps[i].pos.x - comps[j].pos.x >= comps[j].pos._horiz_var,
-                           comps[j].pos.x - comps[i].pos.x >= comps[i].pos._horiz_var,
-                           comps[i].pos.y - comps[j].pos.y >= comps[j].pos._vert_var,
-                           comps[j].pos.y - comps[i].pos.y >= comps[i].pos._vert_var))
+            if not comps[i].is_fixed or not comps[j].is_fixed:
+                c.append(z3.Or(comps[i].pos.x - comps[j].pos.x >= comps[j].pos._horiz_var,
+                               comps[j].pos.x - comps[i].pos.x >= comps[i].pos._horiz_var,
+                               comps[i].pos.y - comps[j].pos.y >= comps[j].pos._vert_var,
+                               comps[j].pos.y - comps[i].pos.y >= comps[i].pos._vert_var))
     return z3.And(c)
 
+
+def pad_max_dists(comps, routing_list):
+    constraints = []
+    for connection in routing_list:
+        comp1name = connection['comp1']
+        comp2name = connection['comp2']
+        pad1x = connection['pad1x']
+        pad1y = connection['pad1y']
+        pad2x = connection['pad2x']
+        pad2y = connection['pad2y']
+        max_length = connection['max_length']
+        comp1 = comps[comp1name]
+        comp2 = comps[comp2name]
+        constraints.append(
+            comp1.pos.pad_dist_lt(pad1x, pad1y, comp2.pos, pad2x, pad2y, max_length))
+
+    return z3.And(constraints)
+        

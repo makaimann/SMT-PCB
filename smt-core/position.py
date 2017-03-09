@@ -256,12 +256,12 @@ class BVXY(PositionBase):
 
 
 class IntXY(PositionBase):
-    def __init__(self, name, fabric, dim1, dim2):
+    def __init__(self, name, fabric, width, height):
         super().__init__(name, fabric)
         self._x = z3.Int(name + '_x')
         self._y = z3.Int(name + '_y')
-        self._dim1 = dim1
-        self._dim2 = dim2
+        self._width = width
+        self._height = height
         self._horiz_var = z3.Int(name + '_width')
         self._vert_var = z3.Int(name + '_height')
 
@@ -302,12 +302,12 @@ class IntXY(PositionBase):
         return self._y
 
     @property
-    def dim1(self):
-        return self._dim1
+    def width(self):
+        return self._width
 
     @property
-    def dim2(self):
-        return self._dim2
+    def height(self):
+        return self._height
 
     @property
     def horiz_var(self):
@@ -321,8 +321,8 @@ class IntXY(PositionBase):
     def invariants(self):
         return z3.And(self._x >= 0, self._x + self._horiz_var <= self.fabric.cols,
                       self._y >= 0, self._y + self._vert_var <= self.fabric.rows,
-                      z3.Or(z3.And(self._horiz_var == self._dim1, self._vert_var == self._dim2),
-                            z3.And(self._horiz_var == self._dim2, self._vert_var == self._dim1)))
+                      z3.Or(z3.And(self._horiz_var == self._width, self._vert_var == self._height),
+                            z3.And(self._horiz_var == self._height, self._vert_var == self._width)))
 
     def get_coordinates(self, model):
         return (model.eval(self.x).as_long(), model.eval(self.y).as_long())
