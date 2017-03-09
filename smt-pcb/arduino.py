@@ -94,8 +94,8 @@ class ArduinoUno:
 
         # put the parts on the board and save
         print 'Compiling PCB'
-        critical_nets = ['D+','D-']
-        self.pcb.compile(critical_nets=critical_nets, smt_file_in=self.json_fname)
+        self.pcb.routing_list = []
+        self.pcb.compile(smt_file_in=self.json_fname)
 
     def inst_usb(self):
         # USB B connector
@@ -301,10 +301,10 @@ class ArduinoUno:
         size = drill+mil_to_mm(8)
 
         # vias can't be placed yet because they're too close to other fixed parts
-        # self.pcb.add(PcbVia(position=Point(600, self.top-2000, 'mils'), size=size, drill=drill))
-        # self.pcb.add(PcbVia(position=Point(550, self.top-100, 'mils'), size=size, drill=drill))
-        # self.pcb.add(PcbVia(position=Point(2600, self.top-1400, 'mils'), size=size, drill=drill))
-        # self.pcb.add(PcbVia(position=Point(2600, self.top-300, 'mils'), size=size, drill=drill))
+        self.pcb.add(PcbVia(position=Point(600, self.top-2000, 'mils'), size=size, drill=drill))
+        self.pcb.add(PcbVia(position=Point(550, self.top-100, 'mils'), size=size, drill=drill))
+        self.pcb.add(PcbVia(position=Point(2600, self.top-1400, 'mils'), size=size, drill=drill))
+        self.pcb.add(PcbVia(position=Point(2600, self.top-300, 'mils'), size=size, drill=drill))
     
     def define_edge(self):
         # create list of points representing the board edge
@@ -314,8 +314,8 @@ class ArduinoUno:
         self.pcb.edge = points
 
         # TODO: automatically determine keepouts
-        self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2600), height=mil_to_mm(2100-1490),
-                     position=Point(2600, self.top-2100, 'mils')))
+        self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2540), height=mil_to_mm(2100-1490),
+                     position=Point(2540, self.top-2100, 'mils')))
         self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2600), height=mil_to_mm(200-0),
                      position=Point(2600, self.top-200, 'mils')))
 

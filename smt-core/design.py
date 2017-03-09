@@ -291,7 +291,7 @@ class Design(NamedIDObject):
             height = comp_dict['height']
             if comp_dict['x'] is not None and comp_dict['y'] is not None:
                 self._comps[name] = Component(name, True, width, height)
-                self._pinned_comps[name] = self._comps[name]
+                self._pinned_comps[name] = [None, [comp_dict['x'], comp_dict['y']]]
             else:
                 self._comps[name] = Component(name, False, width, height)
                 
