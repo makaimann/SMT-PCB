@@ -122,7 +122,7 @@ class Fabric:
 
 
 class Component():
-    def __init__(self, name, fixed_flag, width=None, height=None, inputs=(), outputs=(), pos=None):
+    def __init__(self, name, fixed_flag, width=1, height=1, x=None, y=None, inputs=(), outputs=(), pos=None):
         self._name = name
         self._pos = pos
         self._inputs = set(inputs)
@@ -136,6 +136,8 @@ class Component():
         self._width = width
         self._height = height
         self._fixed = fixed_flag
+        self._x = x
+        self._y = y
 
 
     @property
@@ -193,6 +195,14 @@ class Component():
     @property
     def degree(self):
         return self._degree
+
+    @property
+    def x(self):
+        return self._x
+
+    @property
+    def y(self):
+        return self._y
 
     @pos.setter
     def pos(self, p):
@@ -290,39 +300,10 @@ class Design(NamedIDObject):
             width = comp_dict['width']
             height = comp_dict['height']
             if comp_dict['x'] is not None and comp_dict['y'] is not None:
-                self._comps[name] = Component(name, True, width, height)
+                self._comps[name] = Component(name, True, width, height, comp_dict['x'], comp_dict['y'])
                 self._pinned_comps[name] = self._comps[name]
             else:
                 self._comps[name] = Component(name, False, width, height)
-                
-            #if not isinstance(src_name, str):
-            #    raise TypeError('component_graph must be a dictionary of str to [(str, int)]')
-
-            #if src_name not in self._comps:
-            #    if self._pinned_comps:
-            #        self._comps[src_name] = Component(src_name, self._pinned_comps[src_name][0][0], self._pinned_comps[src_name][0][1])
-            #    else:
-            #        self._comps[src_name] = Component(src_name)
-            #src = self._comps[src_name]
-
-            #for pair in adj_list:
-            #    if not isinstance(pair, tuple) or len(pair) != 2:
-            #        raise TypeError('component_graph must be a dictionary of str to [(str, int)]')
-
-            #    dst_name = pair[0]
-            #    width = pair[1]
-            #    if not isinstance(dst_name, str) or not isinstance(width, int):
-            #        raise TypeError('component_graph must be a dictionary of str to [(str, int)]')
-
-            #    if dst_name not in self._comps:
-            #        if self._pinned_comps:
-            #            self._comps[dst_name] = Component(dst_name, self._pinned_comps[dst_name][0][0], self._pinned_comps[dst_name][0][1])
-            #        else:
-            #            self._comps[dst_name] = Component(dst_name)
-
-            #    dst = self._comps[dst_name]
-
-            #    self._wires[(src_name, dst_name)] = Wire(src, dst, width)
 
         #need to generate positons for each component
         self._gen_pos()
@@ -416,11 +397,15 @@ class Design(NamedIDObject):
         if self._pinned_comps:
             c = []
             for src_name in self._pinned_comps:
-                if self._pinned_comps[src_name][1][0] is not None and self._pinned_comps[src_name][1][1] is not None:
-                    c.append(self._comps[src_name].pos.x == self._position_type.pos_repr(self._pinned_comps[src_name][1][0]))
-                    c.append(self._comps[src_name].pos.y == self._position_type.pos_repr(self._pinned_comps[src_name][1][1]))
-                    c.append(self._comps[src_name].pos.horiz_var == self._comps[src_name].pos.width)
-                    c.append(self._comps[src_name].pos.vert_var == self._comps[src_name].pos.height)
+                comp = self._comps[src_name]
+                c.append(comp.pos.x == self._position_type.pos_repr(comp.x))
+                c.append(comp.pos.y == self._position_type.pos_repr(comp.y))
+                c.append(comp.pos.horiz_var == comp.pos.width)
+                c.append(comp.pos.vert_var == comp.pos.height)
+                c.append(z3.And(comp.pos._d0 == True,
+                                comp.pos._d90 == False,
+                                comp.pos._d180 == False,
+                                comp.pos._d270 == False))
             return z3.And(c)
         else:
             return []    
