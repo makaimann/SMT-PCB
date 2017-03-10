@@ -94,7 +94,6 @@ class ArduinoUno:
 
         # put the parts on the board and save
         print 'Compiling PCB'
-        self.pcb.routing_list = []
         self.pcb.compile(smt_file_in=self.json_fname)
 
     def inst_usb(self):
@@ -133,10 +132,13 @@ class ArduinoUno:
     
         # Connect 16MHz Crystal
         atmega16.wire_xtal('XT1', 'XT2')
-        self.pcb.add(Crystal('XT1', 'XT2'))
+        xtal = Crystal('XT1', 'XT2')
+        self.pcb.add(xtal)
         self.pcb.add(Resistor('XT1', 'XT2', size='0603'))
         self.pcb.add(Capacitor('XT1', 'GND', size='0603'))
         self.pcb.add(Capacitor('XT2', 'GND', size='0603'))
+        self.pcb.add_constr(xtal['1'], atmega16['1'])
+        self.pcb.add_constr(xtal['2'], atmega16['2'])
     
         # Reset circuit    
         self.pcb.add(Resistor('RESET2', '+5V'))
@@ -193,10 +195,13 @@ class ArduinoUno:
         # Note: this differs from the official schematic,
         # which uses a non-standard footprint
         atmega328.wire_xtal('XTAL1', 'XTAL2')
-        self.pcb.add(Crystal('XTAL1', 'XTAL2'))
+        xtal = Crystal('XTAL1', 'XTAL2')
+        self.pcb.add(xtal)
         self.pcb.add(Resistor('XTAL1', 'XTAL2', size='0603'))
         self.pcb.add(Capacitor('XTAL1', 'GND', size='0603'))
         self.pcb.add(Capacitor('XTAL2', 'GND', size='0603'))
+        self.pcb.add_constr(xtal['1'], atmega328['9'])
+        self.pcb.add_constr(xtal['2'], atmega328['10'])
     
         # Reset circuit
         atmega328.reset.wire('RESET')

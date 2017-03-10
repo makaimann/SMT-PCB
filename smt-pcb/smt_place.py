@@ -73,7 +73,7 @@ def place_rects(smt_file_in):
     end = time.time()
     print('Placing took', end-start, 'seconds.')
 
-    if not result:
+    if result == z3.unsat:
         raise Exception('Problem is unsat.')
 
     # create the model
@@ -136,10 +136,10 @@ class PlaceGrid(object):
         self.dy = dy
 
     def round_x(self, x):
-        return int(math.round(float(x)/self.dx))
+        return round(float(x)/self.dx)
 
     def round_y(self, y):
-        return int(math.round(float(y)/self.dy))
+        return round(float(y)/self.dy)
 
     def snap_up_y(self, y):
         return int(math.floor(float(y)/self.dy))
@@ -210,8 +210,8 @@ class PlaceGrid(object):
         # note that only dx is used for this computation
         max_length = self.round_x(req['max_length'])
 
-        return {'comp1' : 'n1', 
-                'comp2' : 'n2', 
+        return {'comp1' : comp1, 
+                'comp2' : comp2, 
                 'pad1x' : pad1x, 
                 'pad1y' : pad1y, 
                 'pad2x' : pad2x, 

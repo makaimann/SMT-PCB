@@ -68,13 +68,15 @@ class BoardTools(object):
         return net_dict
 
 class PcbDesign(object):
-    def __init__(self, fname, dx=1.0, dy=1.0, refdes_max_count=1000):
+    def __init__(self, fname, dx=1.0, dy=1.0, refdes_max_count=1000, def_route_const=7):
         self.fname = fname
         self.comp_dict = {}
         self.net_class_list = []
+        self.routing_list = []
         self.dx = dx
         self.dy = dy
         self.refdes_max_count = refdes_max_count
+        self.def_route_const = def_route_const
         self.refdes_set = set()
         self.keepouts = []
         self.vias = []
@@ -97,6 +99,29 @@ class PcbDesign(object):
 
     def __getitem__(self, key):
         return self.comp_dict[key]
+
+    def add_constr(self, pad1, pad2, length=None):
+        # dictionary to hold the constraint
+        req = {}
+        
+        # component 1 description
+        req['comp1'] = pad1.parent.name
+        pad1_center_rel = pad1.pad.center - pad1.parent.boundingBox.ul
+        req['pad1x'] = pad1_center_rel.x
+        req['pad1y'] = pad1_center_rel.y
+
+        # component 2 description
+        req['comp2'] = pad2.parent.name
+        pad2_center_rel = pad2.pad.center - pad2.parent.boundingBox.ul
+        req['pad2x'] = pad2_center_rel.x
+        req['pad2y'] = pad2_center_rel.y
+        
+        # maximum length constraint
+        if length is None:
+            length = self.def_route_const
+        req['max_length'] = length
+        
+        self.routing_list.append(req)
 
     def add(self, component):
         if isinstance(component, PcbComponent):

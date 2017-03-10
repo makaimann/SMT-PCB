@@ -8,14 +8,11 @@ def exactly_one(x, y, z, w):
     Takes four bools and returns a constraint that is true iff exactly 
     one of them is true
     '''
-    l = [x, y, z, w]
-    uneven_num = z3.Xor(l[0], z3.Xor(l[1], z3.Xor(l[2], l[3])))
-    pairs = []
-    for i in range(0,3):
-        for j in range(i, 4):
-            pairs.append(z3.Not(z3.And(l[i] , l[j])))
-    only_one = z3.And(pairs)
-    return z3.And(uneven_num, only_one)
+
+    return z3.Or(z3.And(z3.Not(x), z3.Not(y), z3.Not(z), w),
+                 z3.And(z3.Not(x), z3.Not(y), z        , z3.Not(w)),
+                 z3.And(z3.Not(x), y        , z3.Not(z), z3.Not(w)),
+                 z3.And(x        , z3.Not(y), z3.Not(z), z3.Not(w)))
 
 def hamming_a(bv):
     s = bv.size()
