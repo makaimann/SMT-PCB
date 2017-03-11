@@ -185,4 +185,21 @@ def pad_max_dists(comps, routing_list):
             comp1.pos.pad_dist_lt(pad1x, pad1y, comp2.pos, pad2x, pad2y, max_length))
 
     return z3.And(constraints)
+
+def pad_dists(comps, routing_list):
+    dist = 0
+    for connection in routing_list:
+        comp1name = connection['comp1']
+        comp2name = connection['comp2']
+        pad1x = connection['pad1x']
+        pad1y = connection['pad1y']
+        pad2x = connection['pad2x']
+        pad2y = connection['pad2y']
+        max_length = connection['max_length']
+        comp1 = comps[comp1name]
+        comp2 = comps[comp2name]
+        dist = dist + comp1.pos.pad_delta_x(pad1x, pad1y, comp2.pos, pad2x ,pad2y) + \
+               comp1.pos.pad_delta_y(pad1x, pad1y, comp2.pos, pad2x, pad2y)
+
+    return dist
         

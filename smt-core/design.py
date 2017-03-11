@@ -279,6 +279,7 @@ class Design(NamedIDObject):
 
         self._r_constraints = ValidContainer()
         self._rcg = dict()
+        self._ropt = dict()
 
         self._max_degree = 0
 
@@ -489,6 +490,16 @@ class Design(NamedIDObject):
         Pad-Routing Related Stuff
         -----------------------------------------------------------------------
     '''
+
+    
+    @property
+    def r_constraints(self):
+        cl = []
+        for k,(f, c) in self._rcg.items():
+            if not c.valid:
+                c.data = f(self._comps, self._routing_list)
+            cl.append(c.data)
+        return z3.And(cl)
     
     def add_pad_cg(self, k, f):
         '''
@@ -502,10 +513,20 @@ class Design(NamedIDObject):
 
 
     @property
-    def r_constraints(self):
+    def r_opt_param(self):
         cl = []
-        for k,(f, c) in self._rcg.items():
+        for k,(f, c) in self._ropt.items():
             if not c.valid:
                 c.data = f(self._comps, self._routing_list)
             cl.append(c.data)
-        return z3.And(cl)
+        return cl
+
+    def add_pad_opt(self, k, f):
+        '''
+            Adds a constraint generator for pad-level connectivity
+        '''
+        self._ropt[k] = (f, ValidContainer())
+
+
+    def remove_pad_opt(self, k):
+        del self._ropt[k]
