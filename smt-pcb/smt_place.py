@@ -61,16 +61,16 @@ def place_rects(smt_file_in):
     # create the problem
     d = design.Design(comps_list, routing_list, fab, position.RotIntXY)
     d.add_constraint_generator('no_overlap', constraints.no_overlap)
-    d.add_pad_cg('max_dist', constraints.pad_max_dists)
-    #d.add_pad_opt('min_total_dist', constraints.pad_dists)
+    #d.add_pad_cg('max_dist', constraints.pad_max_dists)
+    d.add_pad_opt('min_total_dist', constraints.pad_dists)
     
     # create the solver
-    s = z3.Solver()
-    #s = z3.Optimize()
+    #s = z3.Solver()
+    s = z3.Optimize()
     s.add(d.constraints)
 
-    #for func in d.r_opt_param:
-    #    s.minimize(func)
+    for func in d.r_opt_param:
+        s.minimize(func)
 
     # run the solver
     start = time.time()

@@ -60,7 +60,7 @@ class Simple:
         self.pcb.edge = [Point(0,0), Point(14,0), Point(14,14), Point(0,14), Point(0,0)]
 
         print 'Defining routing constraint'
-        self.pcb.add_constr(R1['1'], R2['1'], 2)
+        self.pcb.add_constr(R1['2'], R2['1'], 2)
 
         print 'Compiling PCB'
         self.pcb.compile(smt_file_in=self.json_fname)
