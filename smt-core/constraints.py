@@ -198,8 +198,8 @@ def pad_dists(comps, routing_list):
         max_length = connection['max_length']
         comp1 = comps[comp1name]
         comp2 = comps[comp2name]
-        dist = dist + comp1.pos.pad_delta_x(pad1x, pad1y, comp2.pos, pad2x ,pad2y) + \
-               comp1.pos.pad_delta_y(pad1x, pad1y, comp2.pos, pad2x, pad2y)
+        dist = dist + zu.z3abs(comp1.pos.pad_delta_x(pad1x, pad1y, comp2.pos, pad2x ,pad2y)) + \
+               zu.z3abs(comp1.pos.pad_delta_y(pad1x, pad1y, comp2.pos, pad2x, pad2y))
 
     return dist
         

@@ -30,7 +30,7 @@ class Simple:
         self.pcb_fname = pcb_fname
 
         # Create PCB
-        self.pcb = PcbDesign(pcb_fname, dx=1, dy=1)
+        self.pcb = PcbDesign(pcb_fname, dx=0.25, dy=0.25)
         self.pcb.title = 'SMT-PCB Simple'
         self.pcb.comments = ['Authors:', 'Steven Herbst <sherbst@stanford.edu>', 'Makai Mann <makaim@stanford.edu>']
         self.pcb.company = 'Stanford University'
@@ -39,14 +39,10 @@ class Simple:
     def compile(self):   
 
         print 'Adding components'
-        R1 = Resistor('VDD', 'V1')
-        R2 = Resistor('V1', 'V2')
-        R3 = Resistor('V2', 'V3')
-        R4 = Resistor('V3', 'GND')
-        self.pcb.add(R1)
-        self.pcb.add(R2)
-        self.pcb.add(R3)
-        self.pcb.add(R4)
+        self.pcb.add(Resistor('VDD', 'V1'))
+        self.pcb.add(Resistor('V1', 'V2'))
+        self.pcb.add(Resistor('V2', 'V3'))
+        self.pcb.add(Resistor('V3', 'GND'))
 
         print 'Adding mounting holes'
         drill = 1
@@ -59,8 +55,7 @@ class Simple:
         print 'Defining the board edge'
         self.pcb.edge = [Point(0,0), Point(14,0), Point(14,14), Point(0,14), Point(0,0)]
 
-        print 'Defining routing constraint'
-        self.pcb.add_constr(R1['1'], R2['1'], 2)
+#        print 'Defining routing constraint'
 
         print 'Compiling PCB'
         self.pcb.compile(smt_file_in=self.json_fname)

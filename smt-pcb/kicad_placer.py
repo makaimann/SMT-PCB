@@ -49,15 +49,15 @@ def main():
     print "Placing all components."
     for name, module in smt_output['module_dict'].items():
         if module['type'] == 'comp':
-            # determine rotation
-            if module['rotation'] is not None:
-                pcb.modules[name].rotation = module['rotation']
-            if module['x'] is not None and module['y'] is not None:
-                pcb.modules[name].position =                \
-                    pcb.modules[name].position              \
-                    + Point(module['x'], module['y'])       \
-                    + BoardUpperLeft                        \
-                    - pcb.modules[name].boundingBox.ul
+            # set rotation
+            pcb.modules[name].rotation = module['rotation']
+
+            # set position
+            pcb.modules[name].position =                \
+                pcb.modules[name].position              \
+                + Point(module['x'], module['y'])       \
+                + BoardUpperLeft                        \
+                - pcb.modules[name].boundingBox.ul
         elif module['type'] == 'via':
             coord = Point(module['xc'], module['yc']) + BoardUpperLeft
             via = Via(coord=coord, diameter=module['size'], drill=module['drill'])

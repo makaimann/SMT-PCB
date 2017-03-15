@@ -223,11 +223,11 @@ class ATMEGA16U2(PcbComponent):
     def __init__(self, **kwargs):
         super(ATMEGA16U2, self).__init__('Housings_DFN_QFN', 'QFN-32-1EP_5x5mm_Pitch0.5mm', **kwargs)
         self.prefix = 'U'
-        self.mapping = {'(OC.0B/INT0)PD0': '6', '(PCINT6)PB6': '20', 'UCAP': '27', '(SCLK/PCINT1)PB1': '15', 'GND': '3', 'PC1(~RESET~/dW)': '24', 'UVCC': '31', '(PCINT7/OC.0A/OC.1C)PB7': '21', '(PD0/MISO/PCINT3)PB3': '17', 'XTAL1': '1', 'UGND': '28', 'AVCC': '32', '(PCINT5)PB5': '19', '(OC.1A/PCINT8)PC6': '23', '(PCINT11/AIN2)PC2': '5', '(PCINT10)PC4': '26', '(PDI/MOSI/PCINT2)PB2': '16', '(TXD1/INT3)PD3': '9', '(PCINT9/OC.1B)PC5': '25', 'VCC': '4', '(~SS~/PCINT0)PB0': '14', '(RXD1/AIN1/INT2)PD2': '8', '(~CTS~/~HWB~/AIN6/T0/INT7)PD7': '13', 'PC0(XTAL2)': '2', '(XCK/AIN4/PCINT12)PD5': '11', '(T1/PCINT4)PB4': '18', 'D-': '30', 'D+': '29', '(INT5/AIN3)PD4': '10', '(AIN0/INT1)PD1': '7', '(INT4/ICP1/CLK0)PC7': '22', '(~RTS~/AIN5/INT6)PD6': '12'}
+        self.mapping = {'(OC.0B/INT0)PD0': '6', '(PCINT6)PB6': '20', 'UCAP': '27', '(SCLK/PCINT1)PB1': '15', 'GND': '3', 'PC1(~RESET~/dW)': '24', 'UVCC': '31', '(PCINT7/OC.0A/OC.1C)PB7': '21', '(PD0/MISO/PCINT3)PB3': '17', 'XTAL1': '1', 'UGND': '28', 'AVCC': '32', '(PCINT5)PB5': '19', '(OC.1A/PCINT8)PC6': '23', '(PCINT11/AIN2)PC2': '5', '(PCINT10)PC4': '26', '(PDI/MOSI/PCINT2)PB2': '16', '(TXD1/INT3)PD3': '9', '(PCINT9/OC.1B)PC5': '25', 'VCC': '4', '(~SS~/PCINT0)PB0': '14', '(RXD1/AIN1/INT2)PD2': '8', '(~CTS~/~HWB~/AIN6/T0/INT7)PD7': '13', 'XTAL2': '2', '(XCK/AIN4/PCINT12)PD5': '11', '(T1/PCINT4)PB4': '18', 'D-': '30', 'D+': '29', '(INT5/AIN3)PD4': '10', '(AIN0/INT1)PD1': '7', '(INT4/ICP1/CLK0)PC7': '22', '(~RTS~/AIN5/INT6)PD6': '12'}
 
     def wire_xtal(self, xtal1, xtal2):
         self[self.mapping['XTAL1']].wire(xtal1)
-        self[self.mapping['PC0(XTAL2)']].wire(xtal2)
+        self[self.mapping['XTAL2']].wire(xtal2)
 
     def wire_usb(self, vdd, dm, dp, gnd):
         self[self.mapping['UVCC']].wire(vdd)
@@ -270,11 +270,11 @@ class ATMEGA328P(PcbComponent):
     def __init__(self, **kwargs):
         super(ATMEGA328P, self).__init__('Housings_DIP', 'DIP-28_W7.62mm_Socket', **kwargs)
         self.prefix = 'U'
-        self.mapping = {'(PCINT23/AIN1)PD7': '13', '(PCINT14/~RESET~)PC6': '1', '(PCINT1/OC1A)PB1': '15', '(PCINT10/ADC2)PC2': '25', 'GND': ['8', '22'], '(PCINT18/INT0)PD2': '4', '(PCINT22/OC0A/AIN0)PD6': '12', 'AREF': '21', '(PCINT7/XTAL2/TOSC2)PB7': '10', '(PCINT11/ADC3)PC3': '26', '(PCINT21/OC0B/T1)PD5': '11', 'AVCC': '20', '(PCINT6/XTAL1/TOSC1)PB6': '9', '(PCINT16/RXD)PD0': '2', '(PCINT0/CLKO/ICP1)PB0': '14', '(PCINT19/OC2B/INT1)PD3': '5', '(PCINT5/SCK)PB5': '19', 'VCC': '7', '(PCINT13/SCL/ADC5)PC5': '28', '(PCINT20/XCK/T0)PD4': '6', '(PCINT8/ADC0)PC0': '23', '(PCINT17/TXD)PD1': '3', '(PCINT12/SDA/ADC4)PC4': '27', '(PCINT2/OC1B/~SS~)PB2': '16', '(PCINT4/MISO)PB4': '18', '(PCINT9/ADC1)PC1': '24', '(PCINT3/OC2A/MOSI)PB3': '17'}
+        self.mapping = {'(PCINT23/AIN1)PD7': '13', '(PCINT14/~RESET~)PC6': '1', '(PCINT1/OC1A)PB1': '15', '(PCINT10/ADC2)PC2': '25', 'GND': ['8', '22'], '(PCINT18/INT0)PD2': '4', '(PCINT22/OC0A/AIN0)PD6': '12', 'AREF': '21', 'XTAL2': '10', '(PCINT11/ADC3)PC3': '26', '(PCINT21/OC0B/T1)PD5': '11', 'AVCC': '20', 'XTAL1': '9', '(PCINT16/RXD)PD0': '2', '(PCINT0/CLKO/ICP1)PB0': '14', '(PCINT19/OC2B/INT1)PD3': '5', '(PCINT5/SCK)PB5': '19', 'VCC': '7', '(PCINT13/SCL/ADC5)PC5': '28', '(PCINT20/XCK/T0)PD4': '6', '(PCINT8/ADC0)PC0': '23', '(PCINT17/TXD)PD1': '3', '(PCINT12/SDA/ADC4)PC4': '27', '(PCINT2/OC1B/~SS~)PB2': '16', '(PCINT4/MISO)PB4': '18', '(PCINT9/ADC1)PC1': '24', '(PCINT3/OC2A/MOSI)PB3': '17'}
 
     def wire_xtal(self, xtal1, xtal2):
-        self[self.mapping['(PCINT6/XTAL1/TOSC1)PB6']].wire(xtal1)
-        self[self.mapping['(PCINT7/XTAL2/TOSC2)PB7']].wire(xtal2)
+        self[self.mapping['XTAL1']].wire(xtal1)
+        self[self.mapping['XTAL2']].wire(xtal2)
 
     def wire_power(self, vdd, gnd):
         self[self.mapping['AVCC']].wire(vdd)

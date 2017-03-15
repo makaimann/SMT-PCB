@@ -36,7 +36,7 @@ class ArduinoUno:
         self.top = 2100
 
         # Create PCB
-        self.pcb = PcbDesign(pcb_fname, dx=1, dy=1)
+        self.pcb = PcbDesign(pcb_fname, dx=0.1, dy=0.1)
         self.pcb.title = 'SMT-PCB Arduino Uno'
         self.pcb.comments = ['Authors:', 'Steven Herbst <sherbst@stanford.edu>', 'Makai Mann <makaim@stanford.edu>']
         self.pcb.company = 'Stanford University'
@@ -98,23 +98,37 @@ class ArduinoUno:
 
     def inst_usb(self):
         # USB B connector
-        self.pcb.add(UsbConnB(vdd='XUSB', dm='D-', dp='D+', gnd='UGND', shield='USHIELD', 
-                     position=Point(-250, self.top-1725, 'mils'), rotation=pi, mode='UL'))
+        usb = UsbConnB(vdd='XUSB', dm='D-', dp='D+', gnd='UGND', shield='USHIELD', 
+                       position=Point(-250, self.top-1725, 'mils'), rotation=pi, mode='UL')
+        self.pcb.add(usb)
     
-        # EMC components
-        self.pcb.add(Varistor('D-', 'USHIELD', size='0603'))
-        self.pcb.add(Varistor('D+', 'USHIELD', size='0603'))
+        # ESD components
+        var_dp = Varistor('D-', 'USHIELD', size='0603')
+        var_dn = Varistor('D+', 'USHIELD', size='0603')
+        self.pcb.add(var_dp, var_dn)
+
+        # EMI component
         self.pcb.add(Inductor('USHIELD', 'UGND', size='0805'))
     
         # Polyfuse to protect computer from shorts on the Arduino board
         self.pcb.add(PTC('XUSB', 'USBVCC', size='1812'))
     
         # Series termination resistors
-        self.pcb.add(Resistor('D-', 'RD-'))
-        self.pcb.add(Resistor('D+', 'RD+'))
-    
+        res_dp = Resistor('D-', 'RD-')
+        res_dn = Resistor('D+', 'RD+')
+        self.pcb.add(res_dp, res_dn)
+
         # Short together UGND and GND nets
         self.pcb.add(Resistor('UGND', 'GND'))
+
+        # Add the pad constraints using triangle constraint
+        self.pcb.add_pad_constr(res_dp['1'], usb.get_pin('D+'), length=1) 
+        self.pcb.add_pad_constr(res_dn['1'], usb.get_pin('D-'), length=1) 
+        self.pcb.add_pad_constr(res_dp['1'], var_dp['1'], length=1) 
+        self.pcb.add_pad_constr(res_dn['1'], var_dn['1'], length=1) 
+        
+        # Constrain the D+ and D- nets to be close together
+        self.pcb.add_pad_constr(res_dp['2'], res_dn['2'], length=1)
     
     def inst_atmega16u2(self):
         # Microcontroller to handle USB communication
@@ -123,22 +137,20 @@ class ArduinoUno:
     
         # Connector power the microcontroller
         atmega16.wire_power(vdd='+5V', gnd='GND')
-        self.pcb.add(Capacitor('+5V', 'GND', size='0603'))
+        self.add_dcap(atmega16.get_pin('VCC'))
     
         # Connect USB interface to the microcontroller
         atmega16.wire_usb(vdd='USBVCC', dm='RD-', dp='RD+', gnd='UGND')
         atmega16.ucap.wire('TP_VUCAP')
-        self.pcb.add(Capacitor('TP_VUCAP', 'UGND', size='0603'))
+        self.add_dcap(atmega16.ucap, gnd='UGND')
+
+        # Constrain USB routing
+        self.pcb.add_net_constr('RD-', length=3)
+        self.pcb.add_net_constr('RD+', length=3)
     
         # Connect 16MHz Crystal
         atmega16.wire_xtal('XT1', 'XT2')
-        xtal = Crystal('XT1', 'XT2')
-        self.pcb.add(xtal)
-        self.pcb.add(Resistor('XT1', 'XT2', size='0603'))
-        self.pcb.add(Capacitor('XT1', 'GND', size='0603'))
-        self.pcb.add(Capacitor('XT2', 'GND', size='0603'))
-        self.pcb.add_constr(xtal['1'], atmega16['1'])
-        self.pcb.add_constr(xtal['2'], atmega16['2'])
+        self.inst_xtal(atmega16.get_pin('XTAL1'), atmega16.get_pin('XTAL2'))
     
         # Reset circuit    
         self.pcb.add(Resistor('RESET2', '+5V'))
@@ -185,23 +197,17 @@ class ArduinoUno:
     
         # Power connections
         atmega328.wire_power(vdd='+5V', gnd='GND')
-        self.pcb.add(Capacitor('+5V', 'GND', size='0603'))
+        self.add_dcap(atmega328.get_pin('VCC'))
         
         # Analog reference
         atmega328.aref.wire('AREF')
-        self.pcb.add(Capacitor('AREF', 'GND', size='0603'))
+        self.add_dcap(atmega328.aref)
     
         # Crystal circuit
         # Note: this differs from the official schematic,
         # which uses a non-standard footprint
         atmega328.wire_xtal('XTAL1', 'XTAL2')
-        xtal = Crystal('XTAL1', 'XTAL2')
-        self.pcb.add(xtal)
-        self.pcb.add(Resistor('XTAL1', 'XTAL2', size='0603'))
-        self.pcb.add(Capacitor('XTAL1', 'GND', size='0603'))
-        self.pcb.add(Capacitor('XTAL2', 'GND', size='0603'))
-        self.pcb.add_constr(xtal['1'], atmega328['9'])
-        self.pcb.add_constr(xtal['2'], atmega328['10'])
+        self.inst_xtal(atmega328.get_pin('XTAL1'), atmega328.get_pin('XTAL2'))
     
         # Reset circuit
         atmega328.reset.wire('RESET')
@@ -251,11 +257,14 @@ class ArduinoUno:
     
         # Power connections
         dual_op_amp.wire_power('+5V', 'GND')
-        self.pcb.add(Capacitor('+5V', 'GND', size='0603'))
+        self.add_dcap(dual_op_amp.get_pin('V+'))
     
         # 0.5x resistor divider on VIN
-        self.pcb.add(Resistor('VIN', 'CMP'))
-        self.pcb.add(Resistor('CMP', 'GND'))
+        r1 = Resistor('VIN', 'CMP')
+        r2 = Resistor('CMP', 'GND')
+        self.pcb.add(r1, r2)
+        self.pcb.add_pad_constr(r1['2'], dual_op_amp['2'], length=2)
+        self.pcb.add_pad_constr(r2['1'], dual_op_amp['2'], length=2)
     
         # Comparator 1:
         # If VIN<6.6, connect USBVCC to +5V
@@ -270,19 +279,23 @@ class ArduinoUno:
     
     def inst_ldos(self):
         # Barrel jack for 7-12V supply
-        self.pcb.add(BarrelJack('PWRIN', 'GND', position=Point(-75, self.top-475, 'mils'), mode='UL'))
-        self.pcb.add(Diode('PWRIN', 'VIN', package='SMB'))
-        self.pcb.add(Capacitor('VIN', 'GND', ctype='CP_Elec', size='5x5.3'))
+        jack = BarrelJack('PWRIN', 'GND', position=Point(-75, self.top-475, 'mils'), mode='UL')
+        diode = Diode('PWRIN', 'VIN', package='SMB')
+        self.pcb.add(jack, diode)
+        self.pcb.add_pad_constr(jack['1'], diode['1'], length=5)
             
         # 5.0V LDO
-        self.pcb.add(LDO_5v0(vin='VIN', gnd='GND', vout='+5V'))
-        self.pcb.add(Capacitor('+5V', 'GND', ctype='CP_Elec', size='5x5.3'))
-        self.pcb.add(Capacitor('+5V', 'GND', size='0603'))
-    
+        ldo_5v0 = LDO_5v0(vin='VIN', gnd='GND', vout='+5V')
+        self.pcb.add(ldo_5v0)
+        self.add_dcap(ldo_5v0.get_pin('VI'), ctype='CP_Elec', size='5x5.3', length=2)
+        self.add_dcap(ldo_5v0.get_pin('VO'), ctype='CP_Elec', size='5x5.3', length=2)
+        self.add_dcap(ldo_5v0.get_pin('VO'))
+
         # 3.3V LDO
         self.pcb.add(PMOS(gate='GATE_CMD', source='+5V', drain='USBVCC'))
-        self.pcb.add(LDO_3v3(vin='+5V', gnd='GND', vout='+3V3'))
-        self.pcb.add(Capacitor('+3V3', 'GND', size='0603'))
+        ldo_3v3 = LDO_3v3(vin='+5V', gnd='GND', vout='+3V3')
+        self.pcb.add(ldo_3v3)
+        self.add_dcap(ldo_3v3.get_pin('VOUT'))
     
     def inst_headers(self):
         # Digital 10-pin header 
@@ -300,6 +313,28 @@ class ArduinoUno:
         # Power header
         self.pcb.add(Header8x1(None, '+5V', 'RESET', '+3V3', '+5V', 'GND', 'GND', 'VIN',
                      position=Point(1100, self.top-100, 'mils'), rotation=pi/2.0, mode='PIN1'))
+
+    def inst_xtal(self, pad1, pad2):
+        # determine net names
+        a = pad1.net_name
+        b = pad2.net_name
+
+        # create parts
+        xtal = Crystal(a, b)
+        r = Resistor(a, b, size='0603')
+        c1 = Capacitor(a, 'GND', size='0603')
+        c2 = Capacitor(b, 'GND', size='0603')
+
+        # add to board
+        self.pcb.add(xtal, r, c1, c2)
+    
+        # define wiring constraints
+        self.pcb.add_pad_constr(r['1'], pad1, length=2)
+        self.pcb.add_pad_constr(r['2'], pad2, length=2)
+        self.pcb.add_pad_constr(r['1'], c1['1'], length=1)
+        self.pcb.add_pad_constr(r['2'], c2['1'], length=1)
+        self.pcb.add_pad_constr(pad1, xtal['1'], length=4)
+        self.pcb.add_pad_constr(pad2, xtal['2'], length=4)
 
     def inst_mounting_holes(self):
         drill = mil_to_mm(125)
@@ -323,6 +358,13 @@ class ArduinoUno:
                      position=Point(2540, self.top-2100, 'mils')))
         self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2600), height=mil_to_mm(200-0),
                      position=Point(2600, self.top-200, 'mils')))
+
+    def add_dcap(self, pin, gnd=None, ctype='C', size='0603', length=2):
+        if gnd is None:
+            gnd = 'GND'
+        cap = Capacitor(pin.net_name, gnd, ctype=ctype, size=size)
+        self.pcb.add(cap)
+        self.pcb.add_pad_constr(pin, cap['1'], length=length)
 
 if __name__=='__main__':
     main()

@@ -8,6 +8,7 @@
 import os
 import re
 import random
+import itertools
 from kicad.pcbnew.module import Module
 from kicad.pcbnew.board import Board 
 from kicad.point import Point
@@ -68,8 +69,9 @@ class BoardTools(object):
         return net_dict
 
 class PcbDesign(object):
-    def __init__(self, fname, dx=1.0, dy=1.0, refdes_max_count=1000, def_route_const=7):
+    def __init__(self, fname, dx=1.0, dy=1.0, refdes_max_count=1000, def_route_const=10, max_net_degree=3):
         self.fname = fname
+        self.max_net_degree = max_net_degree
         self.comp_dict = {}
         self.net_class_list = []
         self.routing_list = []
@@ -100,7 +102,7 @@ class PcbDesign(object):
     def __getitem__(self, key):
         return self.comp_dict[key]
 
-    def add_constr(self, pad1, pad2, length=None):
+    def add_pad_constr(self, pad1, pad2, length=None):
         # dictionary to hold the constraint
         req = {}
         
@@ -119,23 +121,39 @@ class PcbDesign(object):
         # maximum length constraint
         if length is None:
             length = self.def_route_const
+
+        # always add minimum edge distances of each pad involved
+        length = length + pad1.edgeDist + pad2.edgeDist
         req['max_length'] = length
         
         self.routing_list.append(req)
 
-    def add(self, component):
-        if isinstance(component, PcbComponent):
-            component.parent = self
-            component.name = self.nextRefdes(component.prefix)
-            self[component.name] = component
-        elif isinstance(component, PcbVia):
-            component.name = self.nextRefdes(component.prefix)
-            self.vias.append(component)
-        elif isinstance(component, PcbKeepout):
-            component.name = self.nextRefdes(component.prefix)
-            self.keepouts.append(component)
-        else:
-            raise Exception('Component type not handled.')
+    def add_tri_constr(self, a, b, c, length=None):
+        self.add_pad_constr(a, b, length=length)
+        self.add_pad_constr(b, c, length=length)
+        self.add_pad_constr(c, a, length=length)
+
+    def add_net_constr(self, net, length=None, include_fixed=True):
+        net_dict = self.get_net_dict()
+        pads = net_dict[net]
+        for pad0, pad1 in zip(pads[:-1], pads[1:]):
+            if include_fixed or (pad0.parent.position is None and pad1.parent.position is None):
+                self.add_pad_constr(pad0, pad1, length)
+
+    def add(self, *args):
+        for arg in args:
+            if isinstance(arg, PcbComponent):
+                arg.parent = self
+                arg.name = self.nextRefdes(arg.prefix)
+                self[arg.name] = arg
+            elif isinstance(arg, PcbVia):
+                arg.name = self.nextRefdes(arg.prefix)
+                self.vias.append(arg)
+            elif isinstance(arg, PcbKeepout):
+                arg.name = self.nextRefdes(arg.prefix)
+                self.keepouts.append(arg)
+            else:
+                raise Exception('Component type not handled.')
 
     def add_net_class(self, net_class):
         self.net_class_list.append(net_class)
@@ -192,18 +210,23 @@ class PcbDesign(object):
             design_dict[keepout.name] = {}
         return design_dict
 
+    def get_net_dict(self):
+        net_dict = {}
+        for comp in self:
+            for pad in comp:
+                if pad.net_name not in net_dict:
+                    net_dict[pad.net_name] = []
+                net_dict[pad.net_name].append(pad)
+        return net_dict
+
     def get_module_dict(self):
         module_dict = {}
 
         for comp in self:
             module_dict[comp.name] = {}
             
-            # set fixed rotation if provided
-            if comp.rotation is not None:
-                module_dict[comp.name]['rotation'] = comp.rotation
-                comp.set_rotation(comp.rotation)
-            else:
-                module_dict[comp.name]['rotation'] = None
+            # will already have been rotated by this point
+            module_dict[comp.name]['rotation'] = comp.rotation
         
             # set fixed position if provided
             if comp.position is not None:
@@ -282,7 +305,6 @@ class PcbDesign(object):
         smt_input['width'] = self.width
         smt_input['height'] = self.height
         smt_input['module_dict'] = self.get_module_dict()
-        smt_input['routing_list'] = self.routing_list
         smt_input['design_dict'] = self.get_design_dict()
 
         # add net class list information since this will have to
@@ -293,6 +315,15 @@ class PcbDesign(object):
 
         # add the board edge definition
         smt_input['board_edge'] = [(p.x, p.y) for p in self.edge]
+
+        # add general closeness constraints
+        # net_dict = self.get_net_dict()
+        # for net, pads in net_dict.items():
+        #     if 2 <= len(pads) and net not in [None, 'GND']:
+        #         length = self.def_route_const*(1+1*(len(pads)-2))
+        #         self.add_net_constr(net, length=length, include_fixed=False)
+
+        smt_input['routing_list'] = self.routing_list
 
         with open(smt_file_in, 'w') as f:
             json.dump(smt_input, f)
@@ -309,6 +340,13 @@ class PcbPad(object):
     def name(self):
         return self.pad.name
 
+    @property
+    def edgeDist(self):
+        bbox = self.parent.boundingBox
+        center = self.pad.center
+        return min(min(bbox.ll.y-center.y, center.y-bbox.ul.y),
+                   min(bbox.ur.x-center.x, center.x-bbox.ul.x))
+
 class PcbComponent(object):
     def __init__(self, lib, part, position=None, rotation=None, mode=None):
         # instantiate the part
@@ -316,19 +354,19 @@ class PcbComponent(object):
 
         # set the position and rotation
         self.position = position
+
+        # if the part has a fixed location, set the
+        # rotation and positioning mode
         if position is not None:
             if rotation is None:
                 self.rotation = 0.0
             else:
                 self.rotation = rotation
+
             if mode is None:
                 self.mode = 'UL'
             else:
                 self.mode = mode
-        else:
-            self.position = position
-            self.rotation = rotation
-            self.mode = mode
 
         # fill up the dictionary defining component pads
         self.pad_dict = {}
@@ -352,6 +390,9 @@ class PcbComponent(object):
         for pad in self.module.pads:
             self[pad.name] = PcbPad(pad)
             self[pad.name].parent = self
+
+    def get_pin(self, name):
+        return self[self.mapping[name]]
 
     def __contains__(self, item):
         return item in self.pad_dict
@@ -387,7 +428,12 @@ class PcbComponent(object):
     def name(self, value):
         self.module.reference = value
 
-    def set_rotation(self, value):
+    @property
+    def rotation(self):
+        return self.module.rotation
+
+    @rotation.setter
+    def rotation(self, value):
         self.module.rotation = value
 
     @property

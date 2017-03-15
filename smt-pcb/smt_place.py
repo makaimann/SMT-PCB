@@ -24,11 +24,11 @@ def main():
     # read command-line arguments
     json_fname = sys.argv[1]
 
-    design, model, smt_dict = place_rects(smt_file_in=json_fname)
+    design, model, smt_dict = place_rects(smt_file_in=json_fname, optimize=False)
 #    print_mesh(model, design)
     write_placement(design, model, smt_dict, smt_file_out=json_fname)
 
-def place_rects(smt_file_in):
+def place_rects(smt_file_in, optimize=False):
     ''' 
         place devices on a fabric, treating them as rectangles with varying sizes.
 
@@ -62,21 +62,29 @@ def place_rects(smt_file_in):
     d = design.Design(comps_list, routing_list, fab, position.RotIntXY)
     d.add_constraint_generator('no_overlap', constraints.no_overlap)
     d.add_pad_cg('max_dist', constraints.pad_max_dists)
-    #d.add_pad_opt('min_total_dist', constraints.pad_dists)
+    
+    if optimize:
+        d.add_pad_opt('min_total_dist', constraints.pad_dists)
     
     # create the solver
-    s = z3.Solver()
-    #s = z3.Optimize()
+    if optimize:
+        s = z3.Optimize()
+    else:
+        s = z3.Solver()
+
+    # add the constraints to the solver
     s.add(d.constraints)
 
-    #for func in d.r_opt_param:
-    #    s.minimize(func)
+    # set up the optimization, if desired
+    if optimize:
+        for func in d.r_opt_param:
+            s.minimize(func)
 
-    # run the solver
+    # run the placement
     start = time.time()
     result = s.check()
     end = time.time()
-    print('Placing took', end-start, 'seconds.')
+    print('Placement took', end-start, 'seconds.')
 
     if result == z3.unsat:
         raise Exception('Problem is unsat.')
@@ -179,7 +187,7 @@ class PlaceGrid(object):
         uly = self.snap_up_y(y)
         lrx = self.snap_right_x(x + width)
         lry = self.snap_down_y(y + height)
-        
+     
         # return dictionary representing component
         return {'name' : name, 
                 'width' : lrx-ulx, 
