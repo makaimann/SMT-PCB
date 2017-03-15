@@ -11,6 +11,7 @@
 from ast import literal_eval
 import sys
 import json
+import math
 
 # project imports
 from kicad.pcbnew.board import Board
@@ -50,12 +51,22 @@ def main():
     for name, module in smt_output['module_dict'].items():
         if module['type'] == 'comp':
             # set rotation
-            pcb.modules[name].rotation = module['rotation']
+            rot = module['rotation']
+            pcb.modules[name].rotation = rot
+
+            # make the buffer vector
+            if isclose(rot, 0) or isclose(rot, math.pi):
+                BufferSpace = Point(module['bufx'], module['bufy'])
+            elif isclose(rot, math.pi/2) or isclose(rot, 3*math.pi/2):
+                BufferSpace = Point(module['bufy'], module['bufx'])
+            else:
+                raise Exception("Can't determine rotation.")
 
             # set position
             pcb.modules[name].position =                \
                 pcb.modules[name].position              \
                 + Point(module['x'], module['y'])       \
+                + BufferSpace                           \
                 + BoardUpperLeft                        \
                 - pcb.modules[name].boundingBox.ul
         elif module['type'] == 'via':
@@ -78,6 +89,9 @@ def main():
     # add nets and net classes to PCB design
     print "Adding nets and net classes to the PCB design"
     BoardTools.add_nets(smt_output['design_dict'], smt_output['net_class_list'], pcb_fname, pcb_fname)
+
+def isclose(a, b, tol=1e-3):
+    return abs(a-b) <= tol
 
 if __name__=='__main__':
     main()

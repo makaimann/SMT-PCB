@@ -374,16 +374,16 @@ class RotIntXY(PositionBase):
     def pad_delta_x(self, pad1x, pad1y, other, pad2x, pad2y):
         #TODO: Implement with rotation!
         #return [], self.x - other.x
-        return self.padx_loc(pad1x, pad1y) - other.padx_loc(pad2x, pad2y)
+        return zu.z3abs(self.padx_loc(pad1x, pad1y) - other.padx_loc(pad2x, pad2y))
 
     def pad_delta_y(self, pad1x, pad1y, other, pad2x, pad2y):
         #TODO: Implement with rotation!
         #return [], self.y - other.y
-        return self.pady_loc(pad1x, pad1y) - other.pady_loc(pad2x, pad2y)
+        return zu.z3abs(self.pady_loc(pad1x, pad1y) - other.pady_loc(pad2x, pad2y))
 
     def pad_dist_lt(self, pad1x, pad1y, other, pad2x, pad2y, constant):
-        return zu.z3abs(self.pad_delta_x(pad1x, pad1y, other, pad2x, pad2y)) \
-            + zu.z3abs(self.pad_delta_y(pad1x, pad1y, other, pad2x, pad2y)) \
+        return self.pad_delta_x(pad1x, pad1y, other, pad2x, pad2y) \
+            + self.pad_delta_y(pad1x, pad1y, other, pad2x, pad2y) \
             <= constant
 
     #Note: These delta's are NOT absolute value

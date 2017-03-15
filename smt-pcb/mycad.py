@@ -109,14 +109,14 @@ class PcbDesign(object):
         # component 1 description
         req['comp1'] = pad1.parent.name
         pad1_center_rel = pad1.pad.center - pad1.parent.boundingBox.ul
-        req['pad1x'] = pad1_center_rel.x
-        req['pad1y'] = pad1_center_rel.y
+        req['pad1x'] = pad1_center_rel.x + pad1.parent.bufx
+        req['pad1y'] = pad1_center_rel.y + pad1.parent.bufy
 
         # component 2 description
         req['comp2'] = pad2.parent.name
         pad2_center_rel = pad2.pad.center - pad2.parent.boundingBox.ul
-        req['pad2x'] = pad2_center_rel.x
-        req['pad2y'] = pad2_center_rel.y
+        req['pad2x'] = pad2_center_rel.x + pad2.parent.bufx
+        req['pad2y'] = pad2_center_rel.y + pad2.parent.bufy
         
         # maximum length constraint
         if length is None:
@@ -127,11 +127,6 @@ class PcbDesign(object):
         req['max_length'] = length
         
         self.routing_list.append(req)
-
-    def add_tri_constr(self, a, b, c, length=None):
-        self.add_pad_constr(a, b, length=length)
-        self.add_pad_constr(b, c, length=length)
-        self.add_pad_constr(c, a, length=length)
 
     def add_net_constr(self, net, length=None, include_fixed=True):
         net_dict = self.get_net_dict()
@@ -246,8 +241,8 @@ class PcbDesign(object):
                 fixed_pos = comp.position + ul_relative
     
                 # store result in SMT input dictionary
-                module_dict[comp.name]['x'] = fixed_pos.x
-                module_dict[comp.name]['y'] = fixed_pos.y
+                module_dict[comp.name]['x'] = fixed_pos.x - comp.bufx
+                module_dict[comp.name]['y'] = fixed_pos.y - comp.bufy
                 module_dict[comp.name]['fixed'] = True
             else:
                 module_dict[comp.name]['x'] = None
@@ -255,8 +250,12 @@ class PcbDesign(object):
                 module_dict[comp.name]['fixed'] = False
 
             # add size information
-            module_dict[comp.name]['width'] = comp.width
-            module_dict[comp.name]['height'] = comp.height
+            module_dict[comp.name]['width'] = comp.width + 2*comp.bufx
+            module_dict[comp.name]['height'] = comp.height + 2*comp.bufy
+
+            # add buffer information
+            module_dict[comp.name]['bufx'] = comp.bufx
+            module_dict[comp.name]['bufy'] = comp.bufy
     
             # add type information
             module_dict[comp.name]['type'] = 'comp'
@@ -343,12 +342,14 @@ class PcbPad(object):
     @property
     def edgeDist(self):
         bbox = self.parent.boundingBox
+        bufx = self.parent.bufx
+        bufy = self.parent.bufy
         center = self.pad.center
-        return min(min(bbox.ll.y-center.y, center.y-bbox.ul.y),
-                   min(bbox.ur.x-center.x, center.x-bbox.ul.x))
+        return min(min(bbox.ll.y+bufy-center.y, center.y-bbox.ul.y+bufy),
+                   min(bbox.ur.x+bufx-center.x, center.x-bbox.ul.x+bufx))
 
 class PcbComponent(object):
-    def __init__(self, lib, part, position=None, rotation=None, mode=None):
+    def __init__(self, lib, part, position=None, rotation=None, mode=None, bufx=0.4, bufy=0.4):
         # instantiate the part
         self.load_module(lib, part)
 
@@ -367,6 +368,10 @@ class PcbComponent(object):
                 self.mode = 'UL'
             else:
                 self.mode = mode
+
+        # set the buffer space around the part
+        self.bufx = bufx
+        self.bufy = bufy
 
         # fill up the dictionary defining component pads
         self.pad_dict = {}

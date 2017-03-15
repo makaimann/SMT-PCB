@@ -122,13 +122,13 @@ class ArduinoUno:
         self.pcb.add(Resistor('UGND', 'GND'))
 
         # Add the pad constraints using triangle constraint
-        self.pcb.add_pad_constr(res_dp['1'], usb.get_pin('D+'), length=1) 
-        self.pcb.add_pad_constr(res_dn['1'], usb.get_pin('D-'), length=1) 
-        self.pcb.add_pad_constr(res_dp['1'], var_dp['1'], length=1) 
-        self.pcb.add_pad_constr(res_dn['1'], var_dn['1'], length=1) 
+        self.pcb.add_pad_constr(res_dp['1'], usb.get_pin('D+'), length=3) 
+        self.pcb.add_pad_constr(res_dn['1'], usb.get_pin('D-'), length=3) 
+        self.pcb.add_pad_constr(res_dp['1'], var_dp['1'], length=3) 
+        self.pcb.add_pad_constr(res_dn['1'], var_dn['1'], length=3) 
         
         # Constrain the D+ and D- nets to be close together
-        self.pcb.add_pad_constr(res_dp['2'], res_dn['2'], length=1)
+        self.pcb.add_pad_constr(res_dp['2'], res_dn['2'], length=3)
     
     def inst_atmega16u2(self):
         # Microcontroller to handle USB communication
@@ -145,8 +145,8 @@ class ArduinoUno:
         self.add_dcap(atmega16.ucap, gnd='UGND')
 
         # Constrain USB routing
-        self.pcb.add_net_constr('RD-', length=3)
-        self.pcb.add_net_constr('RD+', length=3)
+        self.pcb.add_net_constr('RD-', length=10)
+        self.pcb.add_net_constr('RD+', length=10)
     
         # Connect 16MHz Crystal
         atmega16.wire_xtal('XT1', 'XT2')
@@ -263,8 +263,8 @@ class ArduinoUno:
         r1 = Resistor('VIN', 'CMP')
         r2 = Resistor('CMP', 'GND')
         self.pcb.add(r1, r2)
-        self.pcb.add_pad_constr(r1['2'], dual_op_amp['2'], length=2)
-        self.pcb.add_pad_constr(r2['1'], dual_op_amp['2'], length=2)
+        self.pcb.add_pad_constr(r1['2'], dual_op_amp['2'], length=5)
+        self.pcb.add_pad_constr(r2['1'], dual_op_amp['2'], length=5)
     
         # Comparator 1:
         # If VIN<6.6, connect USBVCC to +5V
@@ -282,7 +282,7 @@ class ArduinoUno:
         jack = BarrelJack('PWRIN', 'GND', position=Point(-75, self.top-475, 'mils'), mode='UL')
         diode = Diode('PWRIN', 'VIN', package='SMB')
         self.pcb.add(jack, diode)
-        self.pcb.add_pad_constr(jack['1'], diode['1'], length=5)
+        self.pcb.add_pad_constr(jack['1'], diode['1'], length=7)
             
         # 5.0V LDO
         ldo_5v0 = LDO_5v0(vin='VIN', gnd='GND', vout='+5V')
@@ -329,12 +329,12 @@ class ArduinoUno:
         self.pcb.add(xtal, r, c1, c2)
     
         # define wiring constraints
-        self.pcb.add_pad_constr(r['1'], pad1, length=2)
-        self.pcb.add_pad_constr(r['2'], pad2, length=2)
-        self.pcb.add_pad_constr(r['1'], c1['1'], length=1)
-        self.pcb.add_pad_constr(r['2'], c2['1'], length=1)
-        self.pcb.add_pad_constr(pad1, xtal['1'], length=4)
-        self.pcb.add_pad_constr(pad2, xtal['2'], length=4)
+        self.pcb.add_pad_constr(r['1'], pad1, length=3)
+        self.pcb.add_pad_constr(r['2'], pad2, length=3)
+        self.pcb.add_pad_constr(r['1'], c1['1'], length=3)
+        self.pcb.add_pad_constr(r['2'], c2['1'], length=3)
+        self.pcb.add_pad_constr(pad1, xtal['1'], length=5)
+        self.pcb.add_pad_constr(pad2, xtal['2'], length=5)
 
     def inst_mounting_holes(self):
         drill = mil_to_mm(125)
@@ -359,7 +359,7 @@ class ArduinoUno:
         self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2600), height=mil_to_mm(200-0),
                      position=Point(2600, self.top-200, 'mils')))
 
-    def add_dcap(self, pin, gnd=None, ctype='C', size='0603', length=2):
+    def add_dcap(self, pin, gnd=None, ctype='C', size='0603', length=5):
         if gnd is None:
             gnd = 'GND'
         cap = Capacitor(pin.net_name, gnd, ctype=ctype, size=size)

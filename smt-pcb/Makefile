@@ -11,6 +11,6 @@ all:
 view:
 	pcbnew $(PROJECT).kicad_pcb &
 clean:
-	rm -f *.kicad_pcb *.net *.dict *.pro *.pyc *.pcb *.ses *.dsn *.kicad_pcb-bak *.log *.json
+	rm -f *.kicad_pcb *.net *.dict *.pro *.pyc *.pcb *.ses *.dsn *.kicad_pcb-bak *.log *.json *.rules
 
 .PHONY: all explain install clean

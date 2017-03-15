@@ -7,3 +7,6 @@
 *.pcb
 *.pyc
 *.json
+*.dsn
+*.ses
+*.rules
