@@ -115,8 +115,8 @@ class PcbParser(object):
     @staticmethod
     def populate_net_classes(tree, net_class_list):
         # insert the net declarations into the kicad_pcb file
-        first_net_class_cmd = PcbParser.get_cmd_index(tree, 'net_class')
-        tree[(first_net_class_cmd + 1):(first_net_class_cmd + 1)] = net_class_list
+        idx = PcbParser.get_cmd_index(tree, 'net_class')
+        tree[(idx + 1):(idx + 1)] = net_class_list
 
     @staticmethod
     def add_nets_to_modules(tree, pcb_dict, net_dict):

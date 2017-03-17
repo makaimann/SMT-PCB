@@ -13,7 +13,6 @@ from kicad.point import Point
 from mycad import NetClass
 from mycad import PcbDesign
 from mycad import PcbKeepout
-from mycad import PcbVia
 from parts import *
 from math import pi
 import sys
@@ -255,8 +254,8 @@ class Freeduino:
 
     def inst_ldo(self):
         # Barrel jack for 7-12V supply
-        jack = BarrelJack('PWRIN', 'GND', position=Point(-75,
-                                                         self.top - 475, 'mils'), mode='UL')
+        jack_pos = Point(-75, self.top - 475, 'mils')
+        jack = BarrelJack('PWRIN', 'GND', position=jack_pos, mode='UL')
         diode = Diode('PWRIN', 'VIN')
         self.pcb.add(jack, diode)
 

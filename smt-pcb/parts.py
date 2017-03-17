@@ -9,7 +9,6 @@ import os
 import random
 import re
 from mycad import PcbComponent
-from mycad import PcbDesign
 
 
 class MountingHole(PcbComponent):

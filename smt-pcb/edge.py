@@ -8,22 +8,13 @@
 # Demo code to generate Freeduino
 
 # SMT-PCB specific imports
-from kicad.units import mil_to_mm
 from kicad.point import Point
-from mycad import NetClass
-from mycad import PcbDesign
-from mycad import PcbKeepout
-from mycad import PcbVia
-from parts import *
 
 # general imports
 import json
 
 # project imports
 from kicad.pcbnew.board import Board
-from kicad.pcbnew.via import Via
-from kicad.point import Point
-from mycad import BoardTools
 
 
 def main():

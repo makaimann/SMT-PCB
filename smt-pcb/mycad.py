@@ -6,7 +6,6 @@
 # Library enables user to instantiate new modules from KiCAD library
 
 import os
-import itertools
 from kicad.pcbnew.module import Module
 from kicad.pcbnew.board import Board
 from kicad.point import Point
@@ -134,8 +133,9 @@ class PcbDesign(object):
         net_dict = self.get_net_dict()
         pads = net_dict[net]
         for pad0, pad1 in zip(pads[:-1], pads[1:]):
-            if include_fixed or (
-                    pad0.parent.position is None and pad1.parent.position is None):
+            both_free = (pad0.parent.position is None and
+                         pad1.parent.position is None)
+            if include_fixed or both_free:
                 self.add_pad_constr(pad0, pad1, length)
 
     def add(self, *args):
@@ -231,8 +231,8 @@ class PcbDesign(object):
                 if comp.mode.lower() == 'ul':
                     ul_relative = Point(0, 0)
                 elif comp.mode.lower() == 'pin1':
-                    # Compute the position of the upper-left corner of the device
-                    # relative to PIN1
+                    # Compute the position of the upper-left corner
+                    # of the device relative to PIN1
                     ul_relative = comp.boundingBox.ul - comp['1'].pad.center
                 elif comp.mode.lower() == 'center':
                     comp_center = Point.wrap(comp.module._obj.GetCenter())
@@ -298,7 +298,8 @@ class PcbDesign(object):
         self.edge_points = value
         self.width = max([point[0] for point in self.edge_points])
         self.height = max([point[1] for point in self.edge_points])
-        print 'Detected PCB width=%0.3fmm, height=%0.3fmm' % (self.width, self.height)
+        print('Detected PCB width=%0.3fmm, height=%0.3fmm'
+              % (self.width, self.height))
 
     def get_all_mods(self):
         # generate set of fixed modules
@@ -380,7 +381,10 @@ class PcbDesign(object):
                 self.add_pad_constr(res[0], res[1], length=constr_length)
                 fixed_mods.add(res[0].parent.name)
                 fixed_mods.add(res[1].parent.name)
-                print 'Adding constraint: ', res[0].parent.name, ' <-> ', res[1].parent.name
+                print 'Adding constraint:', \
+                      res[0].parent.name,   \
+                      '<->',                \
+                      res[1].parent.name
                 continue
 
             # try connecting to a module with a pad constraint
@@ -389,7 +393,10 @@ class PcbDesign(object):
                 self.add_pad_constr(res[0], res[1], length=constr_length)
                 constr_mods.add(res[0].parent.name)
                 constr_mods.add(res[1].parent.name)
-                print 'Adding constraint: ', res[0].parent.name, ' <-> ', res[1].parent.name
+                print 'Adding constraint:', \
+                      res[0].parent.name,   \
+                      '<->',                \
+                      res[1].parent.name
                 continue
 
             # try connecting to an unconstrained module
@@ -399,7 +406,10 @@ class PcbDesign(object):
                 constr_mods.add(res[0].parent.name)
                 constr_mods.add(res[1].parent.name)
                 unconstr_mods.remove(res[1].parent.name)
-                print 'Adding constraint: ', res[0].parent.name, ' <-> ', res[1].parent.name
+                print 'Adding constraint:', \
+                      res[0].parent.name,   \
+                      '<->',                \
+                      res[1].parent.name
                 continue
 
         smt_input['routing_list'] = self.routing_list

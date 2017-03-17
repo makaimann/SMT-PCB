@@ -8,12 +8,8 @@
 # Demo code to generate Arduino Uno Rev3
 
 # SMT-PCB specific imports
-from kicad.units import mil_to_mm
 from kicad.point import Point
-from mycad import NetClass
 from mycad import PcbDesign
-from mycad import PcbKeepout
-from mycad import PcbVia
 from parts import *
 import sys
 
@@ -84,10 +80,26 @@ class ArduinoUno:
         self.pcb.edge = points
 
         # TODO: automatically determine keepouts
-        # self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2540), height=mil_to_mm(2100-1490),
-        #             position=Point(2540, self.top-2100, 'mils')))
-        # self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2600), height=mil_to_mm(200-0),
-        #             position=Point(2600, self.top-200, 'mils')))
+        self.pcb.add(
+            PcbKeepout(
+                width=mil_to_mm(
+                    2700 - 2540),
+                height=mil_to_mm(
+                    2100 - 1490),
+                position=Point(
+                    2540,
+                    self.top - 2100,
+                    'mils')))
+        self.pcb.add(
+            PcbKeepout(
+                width=mil_to_mm(
+                    2700 - 2600),
+                height=mil_to_mm(
+                    200 - 0),
+                position=Point(
+                    2600,
+                    self.top - 200,
+                    'mils')))
 
 
 if __name__ == '__main__':

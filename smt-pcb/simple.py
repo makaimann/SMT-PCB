@@ -95,8 +95,8 @@ class Simple:
 
         print 'Defining routing constraint'
         self.pcb.add_pad_constr(R1['2'], R2['1'], 0.5)
-        #self.pcb.add_pad_constr(R2['2'], R3['1'], 0.5)
-        #self.pcb.add_pad_constr(R3['2'], R4['1'], 0.5)
+        # self.pcb.add_pad_constr(R2['2'], R3['1'], 0.5)
+        # self.pcb.add_pad_constr(R3['2'], R4['1'], 0.5)
 
         print 'Compiling PCB'
         self.pcb.compile(smt_file_in=self.json_fname)

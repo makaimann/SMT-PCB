@@ -30,13 +30,7 @@ def main():
 
 
 def place_rects(smt_file_in, optimize=False):
-    '''
-        place devices on a fabric, treating them as rectangles with varying sizes.
-
-    Format:
-        adj = {'comp_name' : [('comp_name2', wire_width), ...]} note: wire_width currently not used
-        comps_data = {'comp_name' : [(width, height), (x position, y position)]}  --set x/y position to None if free component
-    '''
+    # TODO: add documentation for function
 
     # read in SMT input
     with open(smt_file_in, 'r') as f:
@@ -95,32 +89,11 @@ def place_rects(smt_file_in, optimize=False):
 
     return d, model, smt_dict
 
-# def print_mesh(model, design):
-#     # prints the 2D placement to the console for debugging purposes
-#     mesh = defaultdict(lambda: '-')
-#     for c in design.components:
-#         (x, y) = c.pos.get_coordinates(model)
-#         mesh[(x,y)] = c.name
-#
-#     width = 2 + max(len(n) for n in mesh.values())
-#     s = []
-#     for y in range(design.fabric.dims[1]):
-#         ss = []
-#         for x in range(design.fabric.dims[0]):
-#             name = get_refdes(mesh[(x,y)])
-#             ss.append('{c: ^{w}}'.format(c=name, w=width))
-#         s.append(ss)
-#     s = map(' '.join, s)
-#     s = '\n'.join(s)
-#     print(s)
-
 
 def write_placement(design, model, smt_dict, smt_file_out):
     # writes the 2D placement information to a file
     dx = smt_dict['dx']
     dy = smt_dict['dy']
-    grid = PlaceGrid(width=smt_dict['width'], height=smt_dict['height'],
-                     dx=smt_dict['dx'], dy=smt_dict['dy'])
 
     # update components in smt_dict
     for comp in design.components:

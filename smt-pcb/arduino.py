@@ -11,7 +11,8 @@
 from kicad.units import mil_to_mm
 from kicad.point import Point
 from mycad import PcbDesign, NetClass, PcbVia, PcbKeepout
-from parts import *
+from parts import *  # noqa ignore=F405
+
 from math import pi
 import sys
 
@@ -310,8 +311,8 @@ class ArduinoUno:
 
     def inst_ldos(self):
         # Barrel jack for 7-12V supply
-        jack = BarrelJack('PWRIN', 'GND', position=Point(-75,
-                                                         self.top - 475, 'mils'), mode='UL')
+        jack_pos = Point(-75, self.top - 475, 'mils')
+        jack = BarrelJack('PWRIN', 'GND', position=jack_pos, mode='UL')
         diode = Diode('PWRIN', 'VIN', package='SMB')
         self.pcb.add(jack, diode)
         self.pcb.add_pad_constr(jack['1'], diode['1'], length=7)
