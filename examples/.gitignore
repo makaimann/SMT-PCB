@@ -1,0 +1,12 @@
+*.log
+*.pro
+*.kicad_pcb
+*.kicad_pcb-bak
+*.net
+*.dict
+*.pcb
+*.pyc
+*.json
+*.dsn
+*.ses
+*.rules
