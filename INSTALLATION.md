@@ -5,9 +5,11 @@
 3. Requires python2 and python3
 
 ### Install KiCAD
-1. sudo add-apt-repository --yes ppa:js-reynaud/ppa-kicad
-2. sudo apt update
-3. sudo apt install kicad
+```
+sudo add-apt-repository --yes ppa:js-reynaud/ppa-kicad
+sudo apt update
+sudo apt install kicad
+```
 
 ### Install Z3 with Python3 bindings
 Z3 can be found [here](https://github.com/Z3Prover/z3)
@@ -18,7 +20,8 @@ You can build it from source by using:
 
 ## Environment Variables
 Set environment variables:
-```export KISYSMOD="/usr/share/kicad/modules”
+```
+export KISYSMOD="/usr/share/kicad/modules”
 export SMT_PCB="\<your path\>/SMT-PCB/“
 export PYTHONPATH="$SMT_PCB/new:$SMT_PCB/kicad-python:$SMT_PCB/Python-PCB”
 ```
