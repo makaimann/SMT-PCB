@@ -92,169 +92,6 @@ class PositionBase(metaclass=ABCMeta):
         pass
 
 
-
-class Base2H(PositionBase):
-    '''
-    Base class for 2 hot representations
-    '''
-
-    def __init__(self, name, fabric):
-        super().__init__(name, fabric)
-
-    @staticmethod
-    def pos_repr(n):
-        ''' returns the representation of an x or y coordinate in this encoding'''
-        return 2**n
-        
-
-    def delta_x(self, other):
-        delta_x = z3.BitVec(self.name+'-'+other.name+'_delta_x', self.fabric.cols)
-        constraint = z3.Or(self.x == other.x << delta_x, other.x == self.x << delta_x)
-        return constraint, delta_x
-
-    def delta_y(self, other):
-        delta_y = z3.BitVec(self.name+'-'+other.name+'_delta_y', self.fabric.rows)
-        constraint = z3.Or(self.y == other.y << delta_y, other.y == self.y << delta_y)
-        return constraint, delta_y
-
-    def delta_x_fun(self, other):
-        def delta_fun(constant):
-            if constant == 0:
-                return self.x == other.x
-            else:
-                return z3.Or(self.x == other.x << constant, other.x == self.x << constant)
-        return delta_fun
-
-    def delta_y_fun(self, other):
-        def delta_fun(constant):
-            if constant == 0:
-                return self.y == other.y
-            else:
-                return z3.Or(self.y == other.y << constant, other.y == self.y << constant)
-        return delta_fun
-
-    @property
-    def invariants(self):
-        return z3.And(zu.hamming(self.x) == 1, zu.hamming(self.y) == 1)
-
-    def get_coordinates(self, model):
-        return (int(log2(model.eval(self.x).as_long())), int(log2(model.eval(self.y).as_long())))
-
-
-class Packed2H(Base2H):
-    '''
-    2 Hot representation, packed into a single BitVec
-    '''
-    def __init__(self, name, fabric):
-        super().__init__(name, fabric)
-        self._flat = z3.BitVec(self.name + '_flat', self.fabric.rows + self.fabric.cols)
-
-    @property
-    def flat(self):
-        return self._flat
-
-    @property
-    def x(self):
-        return z3.Extract(self.fabric.rows + self.fabric.cols-1, self.fabric.rows, self.flat)
-
-    @property
-    def y(self):
-        return z3.Extract(self.fabric.rows-1, 0, self.flat)
-
-class Unpacked2H(Base2H):
-    '''
-    2 Host representation, x and y in seperate BitVec
-    '''
-    def __init__(self, name, fabric):
-        super().__init__(name, fabric)
-        self._x = z3.BitVec(self.name + '_x', self.fabric.cols)
-        self._y = z3.BitVec(self.name + '_y', self.fabric.rows)
-
-    @property
-    def flat(self):
-        return z3.Concat(self.x, self.y)
-
-    @property
-    def x(self):
-        return self._x
-
-    @property
-    def y(self):
-        return self._y
-
-
-class BVXY(PositionBase):
-    def __init__(self, name, fabric):
-        super().__init__(name, fabric)
-        if 2**(self.fabric.cols.bit_length()-1) == self.fabric.cols:
-            #adding extra bit to avoid overflow adjacency
-            self._x = z3.BitVec(self.name + '_x', 1+self.fabric.cols.bit_length())
-            self._is_x_pow2 = True
-        else:
-            self._x = z3.BitVec(self.name + '_x', self.fabric.cols.bit_length())
-            self._is_x_pow2 = False
-        if 2**(self.fabric.rows.bit_length()-1) == self.fabric.rows:
-            #adding extra bit to avoid overflow adjacency
-            self._y = z3.BitVec(self.name + '_y', 1+self.fabric.rows.bit_length())
-            self._is_y_pow2 = True
-        else:
-            self._y = z3.BitVec(self.name + '_y', self.fabric.rows.bit_length())
-            self._is_y_pow2 = False
-
-    @staticmethod
-    def pos_repr(n):
-        ''' returns the representation of an x or y coordinate in this encoding'''
-        return n
-
-    def delta_x(self, other):
-        return [], zu.absolute_value(self.x - other.x)
-
-    def delta_y(self, other):
-        return [], zu.absolute_value(self.y - other.y)
-
-    def delta_x_fun(self, other):
-        def delta_fun(constant):
-            _, c = self.delta_x(other)
-            return c == constant
-        return delta_fun
-
-    def delta_y_fun(self, other):
-        def delta_fun(constant):
-            _, c = self.delta_y(other)
-            return c == constant
-        return delta_fun
-
-    @property
-    def flat(self):
-        return z3.Concat(self.x, self.y)
-
-    @property
-    def x(self):
-        return self._x
-
-    @property
-    def y(self):
-        return self._y
-
-    @property
-    def invariants(self):
-        constraint = []
-        if self._is_x_pow2:
-            ix = self.fabric.cols.bit_length()
-            constraint.append(z3.Extract(ix, ix, self.x) == 0)
-        else:
-            constraint.append(z3.ULT(self.x, self.fabric.cols))
-        if self._is_y_pow2:
-            iy = self.fabric.rows.bit_length()
-            constraint.append(z3.Extract(iy, iy, self.y) == 0)
-        else:
-            constraint.append(z3.ULT(self.y, self.fabric.rows))
-        return z3.And(constraint)
-
-    def get_coordinates(self, model):
-        return (model.eval(self.x).as_long(), model.eval(self.y).as_long())
-
-
 class IntXY(PositionBase):
     def __init__(self, name, fabric, width, height):
         super().__init__(name, fabric)
@@ -372,13 +209,9 @@ class RotIntXY(PositionBase):
                                  self._y + pad1x)))
 
     def pad_delta_x(self, pad1x, pad1y, other, pad2x, pad2y):
-        #TODO: Implement with rotation!
-        #return [], self.x - other.x
         return zu.z3abs(self.padx_loc(pad1x, pad1y) - other.padx_loc(pad2x, pad2y))
 
     def pad_delta_y(self, pad1x, pad1y, other, pad2x, pad2y):
-        #TODO: Implement with rotation!
-        #return [], self.y - other.y
         return zu.z3abs(self.pady_loc(pad1x, pad1y) - other.pady_loc(pad2x, pad2y))
 
     def pad_dist_lt(self, pad1x, pad1y, other, pad2x, pad2y, constant):
@@ -436,10 +269,6 @@ class RotIntXY(PositionBase):
                       z3.And(self._horiz_var == self._height, self._vert_var == self._width))
         on_fab = z3.And(self._x >= 0, self._x + self._horiz_var <= self.fabric.cols,
                         self._y >= 0, self._y + self._vert_var <= self.fabric.rows)
-        #return z3.And(self._x >= 0, self._x + self._horiz_var <= self.fabric.cols,
-        #              self._y >= 0, self._y + self._vert_var <= self.fabric.rows,
-        #              z3.Or(z3.And(self._horiz_var == self._width, self._vert_var == self._height),
-        #                   z3.And(self._horiz_var == self._height, self._vert_var == self._width)))
         return z3.And(one_rotation, states, on_fab)
 
     def get_coordinates(self, model):
