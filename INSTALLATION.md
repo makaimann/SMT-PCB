@@ -15,8 +15,23 @@ sudo apt install kicad
 Z3 can be found [here](https://github.com/Z3Prover/z3)
 
 You can build it from source by using:
+```
+<your local path to z3-master>/python_scripts/mk_make.py --python
+cd build
+make
+sudo make install
+```
 
-`<your local path to z3-master>/python_scripts/mk_make.py --python`
+If python2 is the default on your system, you can do the following:
+
+```
+alias python=python3
+<your local path to z3-master>/python_scripts/mk_make.py --python
+cd build
+make
+sudo make install
+alias python=python2
+```
 
 ## Environment Variables
 Set environment variables:
