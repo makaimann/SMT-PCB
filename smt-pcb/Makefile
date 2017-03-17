@@ -6,13 +6,13 @@ PROJECT = simple
 all: first second third
 
 first:
-	time python $(PROJECT).py $(PROJECT).json $(PROJECT).kicad_pcb
+	time python2 $(PROJECT).py $(PROJECT).json $(PROJECT).kicad_pcb
 
 second:
-	time ./run_smt.sh $(PROJECT).json
+	time python3 smt_place.py $(PROJECT).json
 
 third:
-	time python kicad_placer.py $(PROJECT).json $(PROJECT).kicad_pcb
+	time python2 kicad_placer.py $(PROJECT).json $(PROJECT).kicad_pcb
 
 view:
 	pcbnew $(PROJECT).kicad_pcb &
