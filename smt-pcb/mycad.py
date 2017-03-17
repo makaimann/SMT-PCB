@@ -6,40 +6,34 @@
 # Library enables user to instantiate new modules from KiCAD library
 
 import os
-import re
-import random
 import itertools
 from kicad.pcbnew.module import Module
-from kicad.pcbnew.board import Board 
+from kicad.pcbnew.board import Board
 from kicad.point import Point
 from datetime import date
 import pcbnew
-import math
 import json
 from pcbparser import PcbParser
+
 
 class BoardTools(object):
     @staticmethod
     def add_nets(pcb_dict, net_class_list, infile, outfile):
         # storage for modified text of the kicad_pcb file
-        lines = []
-    
+        pass
+
         # status variables to keep track of where we are in the file
-        inmodule = False
-        innetclass = False
-    
+
         # String containing name of the current module reference
-        refdes = None
-    
+
         # Integer containing number of the current pad
-        pad_name = None
-    
+
         # Create a dictionary mapping each unique net to an ID number
         net_dict = BoardTools.build_net_dict(pcb_dict)
- 
+
         # Parse the exisiting PCB file
         tree = PcbParser.read_pcb_file(infile)
-    
+
         # add nets to PCB file
         PcbParser.add_net_count(tree, net_dict)
         PcbParser.add_net_decls(tree, net_dict)
@@ -58,18 +52,26 @@ class BoardTools(object):
         for mod_dict in pcb_dict.values():
             for net in mod_dict.values():
                 net_set.add(net)
-    
+
         # make a dictionary mapping each net to an id
         net_id = 1
         net_dict = {}
         for net in net_set:
             net_dict[net] = net_id
             net_id = net_id + 1
-    
+
         return net_dict
 
+
 class PcbDesign(object):
-    def __init__(self, fname, dx=1.0, dy=1.0, refdes_max_count=1000, def_route_const=10, max_net_degree=3):
+    def __init__(
+            self,
+            fname,
+            dx=1.0,
+            dy=1.0,
+            refdes_max_count=1000,
+            def_route_const=10,
+            max_net_degree=3):
         self.fname = fname
         self.max_net_degree = max_net_degree
         self.comp_dict = {}
@@ -95,7 +97,7 @@ class PcbDesign(object):
     def __iter__(self):
         for comp in self.comp_dict.values():
             yield comp
-    
+
     def __setitem__(self, key, val):
         self.comp_dict[key] = val
 
@@ -105,7 +107,7 @@ class PcbDesign(object):
     def add_pad_constr(self, pad1, pad2, length=None):
         # dictionary to hold the constraint
         req = {}
-        
+
         # component 1 description
         req['comp1'] = pad1.parent.name
         pad1_center_rel = pad1.pad.center - pad1.parent.boundingBox.ul
@@ -117,7 +119,7 @@ class PcbDesign(object):
         pad2_center_rel = pad2.pad.center - pad2.parent.boundingBox.ul
         req['pad2x'] = pad2_center_rel.x + pad2.parent.bufx
         req['pad2y'] = pad2_center_rel.y + pad2.parent.bufy
-        
+
         # maximum length constraint
         if length is None:
             length = self.def_route_const
@@ -125,14 +127,15 @@ class PcbDesign(object):
         # always add minimum edge distances of each pad involved
         length = length + pad1.edgeDist + pad2.edgeDist
         req['max_length'] = length
-        
+
         self.routing_list.append(req)
 
     def add_net_constr(self, net, length=None, include_fixed=True):
         net_dict = self.get_net_dict()
         pads = net_dict[net]
         for pad0, pad1 in zip(pads[:-1], pads[1:]):
-            if include_fixed or (pad0.parent.position is None and pad1.parent.position is None):
+            if include_fixed or (
+                    pad0.parent.position is None and pad1.parent.position is None):
                 self.add_pad_constr(pad0, pad1, length)
 
     def add(self, *args):
@@ -154,7 +157,7 @@ class PcbDesign(object):
         self.net_class_list.append(net_class)
 
     def nextRefdes(self, prefix):
-        for count in range(1, self.refdes_max_count+1):
+        for count in range(1, self.refdes_max_count + 1):
             name = unicode(prefix + str(count))
             if name not in self.refdes_set:
                 break
@@ -171,7 +174,7 @@ class PcbDesign(object):
 
         # add all components to the board
         for comp in self:
-            pcb.add(comp.module) 
+            pcb.add(comp.module)
 
         # make title block
         if self.comments:
@@ -219,14 +222,14 @@ class PcbDesign(object):
 
         for comp in self:
             module_dict[comp.name] = {}
-            
+
             # will already have been rotated by this point
             module_dict[comp.name]['rotation'] = comp.rotation
-        
+
             # set fixed position if provided
             if comp.position is not None:
                 if comp.mode.lower() == 'ul':
-                    ul_relative = Point(0,0)
+                    ul_relative = Point(0, 0)
                 elif comp.mode.lower() == 'pin1':
                     # Compute the position of the upper-left corner of the device
                     # relative to PIN1
@@ -236,10 +239,10 @@ class PcbDesign(object):
                     ul_relative = comp.boundingBox.ul - comp_center
                 else:
                     raise Exception('Unimplemented positioning mode.')
-                
+
                 # compute fixed position of upper-left corner of device
                 fixed_pos = comp.position + ul_relative
-    
+
                 # store result in SMT input dictionary
                 module_dict[comp.name]['x'] = fixed_pos.x - comp.bufx
                 module_dict[comp.name]['y'] = fixed_pos.y - comp.bufy
@@ -250,20 +253,20 @@ class PcbDesign(object):
                 module_dict[comp.name]['fixed'] = False
 
             # add size information
-            module_dict[comp.name]['width'] = comp.width + 2*comp.bufx
-            module_dict[comp.name]['height'] = comp.height + 2*comp.bufy
+            module_dict[comp.name]['width'] = comp.width + 2 * comp.bufx
+            module_dict[comp.name]['height'] = comp.height + 2 * comp.bufy
 
             # add buffer information
             module_dict[comp.name]['bufx'] = comp.bufx
             module_dict[comp.name]['bufy'] = comp.bufy
-    
+
             # add type information
             module_dict[comp.name]['type'] = 'comp'
 
         for via in self.vias:
             module_dict[via.name] = {}
-            module_dict[via.name]['x'] = via.position.x - via.size/2.0
-            module_dict[via.name]['y'] = via.position.y - via.size/2.0
+            module_dict[via.name]['x'] = via.position.x - via.size / 2.0
+            module_dict[via.name]['y'] = via.position.y - via.size / 2.0
             module_dict[via.name]['width'] = via.size
             module_dict[via.name]['height'] = via.size
             module_dict[via.name]['fixed'] = True
@@ -273,8 +276,8 @@ class PcbDesign(object):
             module_dict[via.name]['xc'] = via.position.x
             module_dict[via.name]['yc'] = via.position.y
             module_dict[via.name]['drill'] = via.drill
-            module_dict[via.name]['size'] = via.size 
-        
+            module_dict[via.name]['size'] = via.size
+
         for keepout in self.keepouts:
             module_dict[keepout.name] = {}
             module_dict[keepout.name]['x'] = keepout.position.x
@@ -286,7 +289,7 @@ class PcbDesign(object):
 
         return module_dict
 
-    @property 
+    @property
     def edge(self):
         return self.edge_points
 
@@ -320,7 +323,7 @@ class PcbDesign(object):
         for req in self.routing_list:
             constr_mods.add(req['comp1'])
             constr_mods.add(req['comp2'])
-    
+
         return constr_mods
 
     def get_conn_pair(self, name, mod_set):
@@ -345,7 +348,7 @@ class PcbDesign(object):
 
         # add net class list information since this will have to
         # added as the last step
-        net_class_list = [net_class.list_form() for 
+        net_class_list = [net_class.list_form() for
                           net_class in self.net_class_list]
         smt_input['net_class_list'] = net_class_list
 
@@ -360,7 +363,7 @@ class PcbDesign(object):
 
         print 'Unconstrained modules:', unconstr_mods
 
-        net_dict = self.get_net_dict()
+        self.get_net_dict()
         constr_length = 5
 
         while unconstr_mods:
@@ -405,6 +408,7 @@ class PcbDesign(object):
         with open(smt_file_in, 'w') as f:
             json.dump(smt_input, f)
 
+
 class PcbPad(object):
     def __init__(self, pad):
         self.pad = pad
@@ -412,7 +416,7 @@ class PcbPad(object):
 
     def wire(self, net_name):
         self.net_name = net_name
-    
+
     @property
     def name(self):
         return self.pad.name
@@ -423,11 +427,27 @@ class PcbPad(object):
         bufx = self.parent.bufx
         bufy = self.parent.bufy
         center = self.pad.center
-        return min(min(bbox.ll.y+bufy-center.y, center.y-bbox.ul.y+bufy),
-                   min(bbox.ur.x+bufx-center.x, center.x-bbox.ul.x+bufx))
+        return min(min(bbox.ll.y +
+                       bufy -
+                       center.y, center.y -
+                       bbox.ul.y +
+                       bufy), min(bbox.ur.x +
+                                  bufx -
+                                  center.x, center.x -
+                                  bbox.ul.x +
+                                  bufx))
+
 
 class PcbComponent(object):
-    def __init__(self, lib, part, position=None, rotation=None, mode=None, bufx=0.4, bufy=0.4):
+    def __init__(
+            self,
+            lib,
+            part,
+            position=None,
+            rotation=None,
+            mode=None,
+            bufx=0.4,
+            bufy=0.4):
         # instantiate the part
         self.load_module(lib, part)
 
@@ -488,7 +508,7 @@ class PcbComponent(object):
 
     def __iter__(self):
         for pad in self.pad_dict.values():
-            yield pad 
+            yield pad
 
     def __setitem__(self, key, val):
         self.pad_dict[key] = val
@@ -509,7 +529,7 @@ class PcbComponent(object):
         for pad in self.pad_dict.values():
             yield pad
 
-    @property 
+    @property
     def name(self):
         return self.module.reference
 
@@ -529,11 +549,12 @@ class PcbComponent(object):
     def boundingBox(self):
         return self.module.boundingBox
 
+
 class NetClass(object):
-    def __init__(self, name, description="", clearance=0.2, trace_width=0.4, 
+    def __init__(self, name, description="", clearance=0.2, trace_width=0.4,
                  via_dia=0.8, via_drill=0.4, uvia_dia=0.3, uvia_drill=0.1):
 
-        if name=='Default':
+        if name == 'Default':
             raise Exception('Naming a NetClass "Default" is not allowed.')
 
         self.name = name
@@ -558,14 +579,14 @@ class NetClass(object):
 
     def list_form(self):
         # Populate net class options
-        cmd = ['net_class', self.name, '"'+self.description+'"',
-            ['clearance', str(self.clearance)],
-            ['trace_width', str(self.trace_width)],
-            ['via_dia', str(self.via_dia)],
-            ['via_drill', str(self.via_drill)],
-            ['uvia_dia', str(self.uvia_dia)],
-            ['uvia_drill', str(self.uvia_drill)]]    
-        
+        cmd = ['net_class', self.name, '"' + self.description + '"',
+               ['clearance', str(self.clearance)],
+               ['trace_width', str(self.trace_width)],
+               ['via_dia', str(self.via_dia)],
+               ['via_drill', str(self.via_drill)],
+               ['uvia_dia', str(self.uvia_dia)],
+               ['uvia_drill', str(self.uvia_drill)]]
+
         # Add connected nets to command
         for net in self.nets:
             cmd.append(['add_net', net])
@@ -573,12 +594,14 @@ class NetClass(object):
         # Return the full command
         return cmd
 
+
 class PcbVia(object):
     def __init__(self, position, size, drill):
         self.position = position
         self.size = size
         self.drill = drill
         self.prefix = 'V'
+
 
 class PcbKeepout(object):
     def __init__(self, position, width, height):

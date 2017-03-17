@@ -16,7 +16,12 @@ third:
 
 view:
 	pcbnew $(PROJECT).kicad_pcb &
+
+tidy_code:
+	autoflake --in-place --remove-unused-variables *.py
+	autopep8 --in-place --aggressive --aggressive *.py
+
 clean:
 	rm -f *.kicad_pcb *.net *.dict *.pro *.pyc *.pcb *.ses *.dsn *.kicad_pcb-bak *.log *.json *.rules
 
-.PHONY: all explain install clean
+.PHONY: all explain install clean tidy_code

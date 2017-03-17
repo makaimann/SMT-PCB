@@ -2,6 +2,7 @@
 
 from skidl import Part
 
+
 class PinMapping(object):
     def __init__(self, lib, name):
         self.lib = lib
@@ -21,7 +22,7 @@ class PinMapping(object):
 
     def items(self):
         return self.alias_table.items()
-    
+
     def build_alias_table(self):
         self.alias_table = {}
         for pin in self.part.pins:
@@ -31,4 +32,3 @@ class PinMapping(object):
                 self[pin.name] = [self[pin.name], pin.num]
             else:
                 self[pin.name].append(pin.num)
-

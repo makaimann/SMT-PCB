@@ -10,10 +10,13 @@
 # SMT-PCB specific imports
 from kicad.units import mil_to_mm
 from kicad.point import Point
-from mycad import PcbDesign, NetClass, PcbVia, PcbKeepout
+from mycad import NetClass
+from mycad import PcbDesign
+from mycad import PcbKeepout
+from mycad import PcbVia
 from parts import *
-from math import pi
 import sys
+
 
 def main():
     # read command-line arguments
@@ -24,8 +27,9 @@ def main():
     uno = ArduinoUno(json_fname, pcb_fname)
     uno.compile()
 
+
 class ArduinoUno:
-    
+
     def __init__(self, json_fname, pcb_fname):
         # Files used for I/O
         self.json_fname = json_fname
@@ -38,11 +42,13 @@ class ArduinoUno:
         # Create PCB
         self.pcb = PcbDesign(pcb_fname, dx=1, dy=1)
         self.pcb.title = 'SMT-PCB Arduino Uno'
-        self.pcb.comments = ['Authors:', 'Steven Herbst <sherbst@stanford.edu>', 'Makai Mann <makaim@stanford.edu>']
+        self.pcb.comments = ['Authors:',
+                             'Steven Herbst <sherbst@stanford.edu>',
+                             'Makai Mann <makaim@stanford.edu>']
         self.pcb.company = 'Stanford University'
         self.pcb.revision = '1'
- 
-    def compile(self):   
+
+    def compile(self):
 
         # ATMEGA328P, main microcontroller
         print 'Instantiating ATMEGA328P'
@@ -60,7 +66,7 @@ class ArduinoUno:
         # Main microcontroller
         atmega328 = ATMEGA328P()
         self.pcb.add(atmega328)
-    
+
         # Crystal circuit
         # Note: this differs from the official schematic,
         # which uses a non-standard footprint
@@ -69,19 +75,20 @@ class ArduinoUno:
         self.pcb.add(xtal)
         self.pcb.add_constr(atmega328['9'], xtal['1'], length=6)
         self.pcb.add_constr(atmega328['10'], xtal['2'], length=6)
-    
+
     def define_edge(self):
         # create list of points representing the board edge
-        points = [(0, 0), (0, 2100), (2540, 2100), (2600, 2040), (2600, 1590), 
+        points = [(0, 0), (0, 2100), (2540, 2100), (2600, 2040), (2600, 1590),
                   (2700, 1490), (2700, 200), (2600, 100), (2600, 0), (0, 0)]
-        points = [Point(x, self.top-y, 'mils') for x,y in points]
+        points = [Point(x, self.top - y, 'mils') for x, y in points]
         self.pcb.edge = points
 
         # TODO: automatically determine keepouts
-        #self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2540), height=mil_to_mm(2100-1490),
+        # self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2540), height=mil_to_mm(2100-1490),
         #             position=Point(2540, self.top-2100, 'mils')))
-        #self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2600), height=mil_to_mm(200-0),
+        # self.pcb.add(PcbKeepout(width=mil_to_mm(2700-2600), height=mil_to_mm(200-0),
         #             position=Point(2600, self.top-200, 'mils')))
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     main()

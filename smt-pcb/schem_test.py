@@ -8,7 +8,6 @@
 # Demo code to generate a random network of resistor connections
 
 # general imports
-import math
 from random import randint, randrange
 
 # SMT-PCB specific imports
@@ -29,7 +28,7 @@ count = 1
 while count < Ncomp:
     # try to create the component, repeating until it
     # fits the size constraints
-    name = 'U'+str(count)
+    name = 'U' + str(count)
     comp = RandomComponent(name)
     if comp.width > 10 or comp.height > 10:
         continue
@@ -42,17 +41,17 @@ while count < Ncomp:
         pads.append(pad)
 
     # increment device counter
-    count = count+1
+    count = count + 1
 
 # algorithm to connect random numbers of nets together
-for net_count in range(1, Nnet+1):
+for net_count in range(1, Nnet + 1):
     # can't make another net if there are 0 or 1 pads remaining...
-    if len(pads)<2:
+    if len(pads) < 2:
         break
 
     # name the net
-    net_name = 'V'+str(net_count)
-    
+    net_name = 'V' + str(net_count)
+
     # decide how many pads we're wiring up
     max_pads = min(MaxConn, len(pads))
     pad_count = randint(2, max_pads)

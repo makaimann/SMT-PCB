@@ -9,6 +9,7 @@
 import time
 import re
 
+
 class PcbParser(object):
     @staticmethod
     def formatFlat(s):
@@ -18,7 +19,7 @@ class PcbParser(object):
     @staticmethod
     def format(s, level=0):
         # set the indent level for readability
-        indent = ' '*level
+        indent = ' ' * level
 
         if isinstance(s, basestring):
             return indent + s + '\n'
@@ -27,7 +28,7 @@ class PcbParser(object):
         else:
             out = indent + '(' + s[0] + '\n'
             for e in s[1:]:
-                out = out + PcbParser.format(e, level+1)
+                out = out + PcbParser.format(e, level + 1)
             out = out + indent + ')\n'
             return out
 
@@ -42,11 +43,11 @@ class PcbParser(object):
         # read the *.kicad_pcb file token by token
         with open(infile, 'r') as f:
             inport = InPort(f)
-            
+
             def read_ahead(token):
-                # If the current token is a left parenthesis, 
+                # If the current token is a left parenthesis,
                 # start building a new sub-list
-                if token=='(':
+                if token == '(':
                     L = []
                     while True:
                         token = inport.next_token()
@@ -54,9 +55,9 @@ class PcbParser(object):
                             return L
                         else:
                             L.append(read_ahead(token))
-                # Otherwise the token must be an atom, 
+                # Otherwise the token must be an atom,
                 # unless there is a syntax error
-                elif token==')':
+                elif token == ')':
                     raise Exception('Unexpected )')
                 elif token is None:
                     raise Exception('Unexpected EOF')
@@ -71,14 +72,14 @@ class PcbParser(object):
                 tree = read_ahead(token1)
 
         end = time.time()
-        print 'Parsing took', end-start, 'seconds'
-    
+        print 'Parsing took', end - start, 'seconds'
+
         return tree
 
     @staticmethod
     def write_pcb_file(tree, outfile):
         formatted = PcbParser.format(tree)
-        open(outfile,'w').write(formatted)
+        open(outfile, 'w').write(formatted)
 
     @staticmethod
     def get_cmd_index(tree, cmd):
@@ -86,13 +87,13 @@ class PcbParser(object):
 
     @staticmethod
     def get_cmd(tree, cmd):
-        return next(x for x in tree if x[0]==cmd)
+        return next(x for x in tree if x[0] == cmd)
 
     @staticmethod
     def add_net_count(tree, net_dict):
         general_cmd = PcbParser.get_cmd(tree, 'general')
         net_cmd = PcbParser.get_cmd(general_cmd, 'nets')
-        net_cmd[1] = str(1+len(net_dict))
+        net_cmd[1] = str(1 + len(net_dict))
 
     @staticmethod
     def add_net_decls(tree, net_dict):
@@ -103,7 +104,7 @@ class PcbParser(object):
 
         # add them to the PCB file at the right position
         net_cmd_index = PcbParser.get_cmd_index(tree, 'net')
-        tree[(net_cmd_index+1):(net_cmd_index+1)] = net_decls
+        tree[(net_cmd_index + 1):(net_cmd_index + 1)] = net_decls
 
     @staticmethod
     def populate_default_net_class(tree, net_set):
@@ -115,8 +116,8 @@ class PcbParser(object):
     def populate_net_classes(tree, net_class_list):
         # insert the net declarations into the kicad_pcb file
         first_net_class_cmd = PcbParser.get_cmd_index(tree, 'net_class')
-        tree[(first_net_class_cmd+1):(first_net_class_cmd+1)]= net_class_list
- 
+        tree[(first_net_class_cmd + 1):(first_net_class_cmd + 1)] = net_class_list
+
     @staticmethod
     def add_nets_to_modules(tree, pcb_dict, net_dict):
         for val in tree:
@@ -136,9 +137,11 @@ class PcbParser(object):
                     net_name = pcb_dict[refdes][pad_name]
                     net_id = net_dict[net_name]
                     val.append(['net', str(net_id), net_name])
-       
+
 # class used to parse Lisp-like syntax
 # modified from: http://norvig.com/lispy2.html
+
+
 class InPort(object):
     # Tokenizer splits on parentheses but respects double-quoted strings
     # TODO: handle multi-line quotes
