@@ -11,7 +11,9 @@
 
 ### Install Z3 with Python3 bindings
 Z3 can be found [here](https://github.com/Z3Prover/z3)
+
 You can build it from source by using:
+
 python_scripts/mk_make.py --python
 
 ## Environment Variables
