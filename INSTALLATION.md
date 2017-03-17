@@ -38,5 +38,5 @@ Set environment variables:
 ```
 export KISYSMOD="/usr/share/kicad/modules”
 export SMT_PCB="\<your path\>/SMT-PCB/“
-export PYTHONPATH="$SMT_PCB/new:$SMT_PCB/kicad-python:$SMT_PCB/Python-PCB”
+export PYTHONPATH="$SMT_PCB/new:$SMT_PCB/kicad-python:$SMT_PCB/smt-pcb”
 ```
