@@ -10,12 +10,12 @@
 3. sudo apt install kicad
 
 ### Install Z3 with Python3 bindings
-Z3 can be found here[https://github.com/Z3Prover/z3]
+Z3 can be found [here](https://github.com/Z3Prover/z3)
 You can build it from source by using:
 python_scripts/mk_make.py --python
 
 ## Environment Variables
 Set environment variables:
 1. export KISYSMOD="/usr/share/kicad/modules”
-2. export SMT_PCB="<your path>/SMT-PCB/“
+2. export SMT_PCB="\<your path\>/SMT-PCB/“
 3. export PYTHONPATH="$SMT_PCB/new:$SMT_PCB/kicad-python:$SMT_PCB/Python-PCB”
