@@ -365,7 +365,7 @@ class PcbDesign(object):
         print 'Unconstrained modules:', unconstr_mods
 
         self.get_net_dict()
-        constr_length = 5
+        constr_length = self.def_route_const
 
         while unconstr_mods:
             for mod in unconstr_mods:
@@ -487,11 +487,11 @@ class PcbComponent(object):
 
     def load_module(self, lib, part):
         # determine path to KICAD libraries
-        KICAD_PATH = os.environ['KICAD_PATH']
+        kicad_path = os.environ['KICAD_PATH']
         file_ext = 'pretty'
 
         # determine the appropriate plugin to use for loading the module
-        src_libpath = os.path.join(KICAD_PATH, 'modules', lib + '.' + file_ext)
+        src_libpath = os.path.join(kicad_path, 'modules', lib + '.' + file_ext)
         src_type = pcbnew.IO_MGR.GuessPluginTypeFromLibPath(src_libpath)
         src_plugin = pcbnew.IO_MGR.PluginFind(src_type)
 

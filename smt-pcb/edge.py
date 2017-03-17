@@ -38,7 +38,7 @@ def main():
     y0 = disp_center_y - ymid
 
     # coordinate of board upper left
-    BoardUpperLeft = Point(x0, y0)
+    board_ul = Point(x0, y0)
 
     # draw the board edge
     width = smt_output['width']
@@ -60,7 +60,7 @@ def main():
         else:
             y = y + bufy
 
-        edge.append(Point(x, y) + BoardUpperLeft)
+        edge.append(Point(x, y) + board_ul)
 
     print edge
 

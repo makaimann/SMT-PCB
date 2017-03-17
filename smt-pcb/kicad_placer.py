@@ -44,7 +44,7 @@ def main():
     y0 = disp_center_y - ymid
 
     # coordinate of board upper left
-    BoardUpperLeft = Point(x0, y0)
+    board_ul = Point(x0, y0)
 
     # place all components
     print "Placing all components."
@@ -56,21 +56,21 @@ def main():
 
             # make the buffer vector
             if isclose(rot, 0) or isclose(rot, math.pi):
-                BufferSpace = Point(module['bufx'], module['bufy'])
+                buf_space = Point(module['bufx'], module['bufy'])
             elif isclose(rot, math.pi / 2) or isclose(rot, 3 * math.pi / 2):
-                BufferSpace = Point(module['bufy'], module['bufx'])
+                buf_space = Point(module['bufy'], module['bufx'])
             else:
                 raise Exception("Can't determine rotation.")
 
             # set position
-            pcb.modules[name].position =                \
-                pcb.modules[name].position              \
-                + Point(module['x'], module['y'])       \
-                + BufferSpace                           \
-                + BoardUpperLeft                        \
+            pcb.modules[name].position =          \
+                pcb.modules[name].position        \
+                + Point(module['x'], module['y']) \
+                + buf_space                       \
+                + board_ul                        \
                 - pcb.modules[name].boundingBox.ul
         elif module['type'] == 'via':
-            coord = Point(module['xc'], module['yc']) + BoardUpperLeft
+            coord = Point(module['xc'], module['yc']) + board_ul
             via = Via(
                 coord=coord,
                 diameter=module['size'],
@@ -82,7 +82,7 @@ def main():
             raise Exception('Unimplemented component type.')
 
     # draw the board edge
-    edge = [Point(x, y) + BoardUpperLeft for x, y in smt_output['board_edge']]
+    edge = [Point(x, y) + board_ul for x, y in smt_output['board_edge']]
     pcb.add_polyline(edge, layer='Edge.Cuts')
 
     # save board

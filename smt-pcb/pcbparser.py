@@ -48,13 +48,13 @@ class PcbParser(object):
                 # If the current token is a left parenthesis,
                 # start building a new sub-list
                 if token == '(':
-                    L = []
+                    lis = []
                     while True:
                         token = inport.next_token()
                         if token == ')':
-                            return L
+                            return lis
                         else:
-                            L.append(read_ahead(token))
+                            lis.append(read_ahead(token))
                 # Otherwise the token must be an atom,
                 # unless there is a syntax error
                 elif token == ')':

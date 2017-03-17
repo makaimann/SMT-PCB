@@ -596,7 +596,7 @@ class RandomComponent(PcbComponent):
 
     @staticmethod
     def rand_lib_part():
-        KICAD_PATH = os.environ['KICAD_PATH']
+        kicad_path = os.environ['KICAD_PATH']
 
         mod_list = ['Capacitors_THT.pretty',
                     'Diodes_THT.pretty',
@@ -610,7 +610,7 @@ class RandomComponent(PcbComponent):
                     'Resistors_SMD.pretty']
 
         lib = random.choice(mod_list)
-        lib_full_path = os.path.join(KICAD_PATH, 'modules', lib)
+        lib_full_path = os.path.join(kicad_path, 'modules', lib)
         part = random.choice(os.listdir(lib_full_path))
 
         lib = os.path.splitext(lib)[0]
