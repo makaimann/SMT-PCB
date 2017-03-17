@@ -1,13 +1,19 @@
+PROJECT = freeduino
 #PROJECT = xtal
-PROJECT = arduino
+#PROJECT = arduino
 #PROJECT = simple
 
-all:
+all: first second third
+
+first:
 	time python $(PROJECT).py $(PROJECT).json $(PROJECT).kicad_pcb
-	@echo
+
+second:
 	time ./run_smt.sh $(PROJECT).json
-	@echo
+
+third:
 	time python kicad_placer.py $(PROJECT).json $(PROJECT).kicad_pcb
+
 view:
 	pcbnew $(PROJECT).kicad_pcb &
 clean:

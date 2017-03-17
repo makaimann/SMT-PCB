@@ -297,6 +297,43 @@ class PcbDesign(object):
         self.height = max([point[1] for point in self.edge_points])
         print 'Detected PCB width=%0.3fmm, height=%0.3fmm' % (self.width, self.height)
 
+    def get_all_mods(self):
+        # generate set of fixed modules
+        all_mods = set()
+        for comp in self:
+            all_mods.add(comp.name)
+
+        return all_mods
+
+    def get_fixed_mods(self):
+        # generate set of fixed modules
+        fixed_mods = set()
+        for comp in self:
+            if comp.position is not None:
+                fixed_mods.add(comp.name)
+
+        return fixed_mods
+
+    def get_constr_mods(self):
+        # comps with routing_list constraints
+        constr_mods = set()
+        for req in self.routing_list:
+            constr_mods.add(req['comp1'])
+            constr_mods.add(req['comp2'])
+    
+        return constr_mods
+
+    def get_conn_pair(self, name, mod_set):
+        orig = self[name]
+        for pad in orig:
+            for mod in mod_set:
+                if pad.net_name in ['GND', 'UGND', '+5V', '+3V3']:
+                    continue
+                res = self[mod].get_pad_on_net(pad.net_name)
+                if res:
+                    return pad, res
+        return None
+
     def write_smt_input(self, smt_file_in):
         smt_input = {}
         smt_input['dx'] = self.dx
@@ -315,14 +352,55 @@ class PcbDesign(object):
         # add the board edge definition
         smt_input['board_edge'] = [(p.x, p.y) for p in self.edge]
 
-        # add general closeness constraints
-        # net_dict = self.get_net_dict()
-        # for net, pads in net_dict.items():
-        #     if 2 <= len(pads) and net not in [None, 'GND']:
-        #         length = self.def_route_const*(1+1*(len(pads)-2))
-        #         self.add_net_constr(net, length=length, include_fixed=False)
+        # print all unconstrained parts
+        all_mods = self.get_all_mods()
+        fixed_mods = self.get_fixed_mods()
+        constr_mods = self.get_constr_mods()
+        unconstr_mods = all_mods - fixed_mods - constr_mods
+
+        print 'Unconstrained modules:', unconstr_mods
+
+        net_dict = self.get_net_dict()
+        constr_length = 5
+
+        while unconstr_mods:
+            for mod in unconstr_mods:
+                if self.get_conn_pair(mod, fixed_mods):
+                    break
+                if self.get_conn_pair(mod, constr_mods):
+                    break
+            unconstr_mods.remove(mod)
+
+            # try connecting to a fixed module
+            res = self.get_conn_pair(mod, fixed_mods)
+            if res:
+                self.add_pad_constr(res[0], res[1], length=constr_length)
+                fixed_mods.add(res[0].parent.name)
+                fixed_mods.add(res[1].parent.name)
+                print 'Adding constraint: ', res[0].parent.name, ' <-> ', res[1].parent.name
+                continue
+
+            # try connecting to a module with a pad constraint
+            res = self.get_conn_pair(mod, constr_mods)
+            if res:
+                self.add_pad_constr(res[0], res[1], length=constr_length)
+                constr_mods.add(res[0].parent.name)
+                constr_mods.add(res[1].parent.name)
+                print 'Adding constraint: ', res[0].parent.name, ' <-> ', res[1].parent.name
+                continue
+
+            # try connecting to an unconstrained module
+            res = self.get_conn_pair(mod, unconstr_mods)
+            if res:
+                self.add_pad_constr(res[0], res[1], length=constr_length)
+                constr_mods.add(res[0].parent.name)
+                constr_mods.add(res[1].parent.name)
+                unconstr_mods.remove(res[1].parent.name)
+                print 'Adding constraint: ', res[0].parent.name, ' <-> ', res[1].parent.name
+                continue
 
         smt_input['routing_list'] = self.routing_list
+        print len(self.routing_list)
 
         with open(smt_file_in, 'w') as f:
             json.dump(smt_input, f)
@@ -399,6 +477,12 @@ class PcbComponent(object):
     def get_pin(self, name):
         return self[self.mapping[name]]
 
+    def get_pad_on_net(self, net_name):
+        for pad in self:
+            if pad.net_name == net_name:
+                return pad
+        return None
+
     def __contains__(self, item):
         return item in self.pad_dict
 
@@ -446,7 +530,7 @@ class PcbComponent(object):
         return self.module.boundingBox
 
 class NetClass(object):
-    def __init__(self, name, description="", clearance=0.2, trace_width=0.25, 
+    def __init__(self, name, description="", clearance=0.2, trace_width=0.4, 
                  via_dia=0.8, via_drill=0.4, uvia_dia=0.3, uvia_drill=0.1):
 
         if name=='Default':
@@ -463,11 +547,14 @@ class NetClass(object):
 
         self.nets = []
 
-    def add(self, net_or_nets):
-        if isinstance(net_or_nets, list):
-            self.nets.extend(net_or_nets)
+    def add(self, *args):
+        if isinstance(args, list) or isinstance(args, tuple):
+            print 'Adding list of nets:', args
+            for net in args:
+                self.nets.append(net)
         else:
-            self.nets.append(net_or_nets)
+            print 'Adding single net:', args
+            self.nets.append(args)
 
     def list_form(self):
         # Populate net class options

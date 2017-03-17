@@ -10,9 +10,20 @@ import random
 import re
 from mycad import PcbDesign, PcbComponent
 
+class MountingHole(PcbComponent):
+    def __init__(self, net=None, **kwargs):
+        super(MountingHole, self).__init__('Mounting_Holes', 'MountingHole_125mil', **kwargs)
+        self.prefix = 'H'
+        if net is not None:
+            self['1'].wire(net)
+
 class Resistor(PcbComponent):
-    def __init__(self, p, n, size='0805', **kwargs):
-        super(Resistor, self).__init__('Resistors_SMD', 'R_'+size, **kwargs)
+    def __init__(self, p, n, size='PTH', **kwargs):
+        if size in ['0402', '0603', '0805', '1206', '1210']:
+            super(Resistor, self).__init__('Resistors_SMD', 'R_'+size, **kwargs)
+        elif size=='PTH':
+            super(Resistor, self).__init__('Resistors_THT', 'R_Axial_DIN0204_L3.6mm_D1.6mm_P7.62mm_Horizontal', **kwargs)
+            
         self.prefix = 'R'
         self['1'].wire(p)
         self['2'].wire(n)
@@ -25,14 +36,14 @@ class Inductor(PcbComponent):
         self['2'].wire(n)
 
 class Capacitor(PcbComponent):
-    def __init__(self, p, n, ctype='C', size=None, **kwargs):
-        if ctype=='C':
-            if size is None:
-                size = '0805'
-        elif ctype=='CP_Elec':
-            if size is None:
-                size = '5x5.3'
-        super(Capacitor, self).__init__('Capacitors_SMD', ctype+'_'+size, **kwargs)
+    def __init__(self, p, n, value=100e-9, **kwargs):
+        if value < 1e-9:
+            mod = 'C_Disc_D3.8mm_W2.6mm_P2.50mm'
+        elif value < 1e-6:
+            mod = 'C_Disc_D3.8mm_W2.6mm_P2.50mm'
+        else:
+            mod = 'CP_Radial_D6.3mm_P2.50mm'
+        super(Capacitor, self).__init__('Capacitors_THT', mod, **kwargs)
         self.prefix = 'C'
         self['1'].wire(p)
         self['2'].wire(n)
@@ -62,12 +73,12 @@ class LDO_3v3(PcbComponent):
 
 class LDO_5v0(PcbComponent):
     def __init__(self, vin, gnd, vout, **kwargs):
-        super(LDO_5v0, self).__init__('TO_SOT_Packages_SMD', 'SOT-223', **kwargs)
-        self.mapping = {'VI': '3', 'GND': '1', 'VO': '2'}
+        super(LDO_5v0, self).__init__('TO_SOT_Packages_THT', 'TO-220_Horizontal', **kwargs)
+        self.mapping = {'IN': '1', 'GND': '2', 'OUT': '3'}
         self.prefix = 'U'
-        self[self.mapping['VI']].wire(vin)
-        self[self.mapping['GND']].wire(gnd)
-        self[self.mapping['VO']].wire(vout)
+        self.get_pin('IN').wire(vin)
+        self.get_pin('GND').wire(gnd)
+        self.get_pin('OUT').wire(vout)
 
 class BarrelJack(PcbComponent):
     def __init__(self, vdd, gnd, **kwargs):
@@ -85,22 +96,18 @@ class SPST(PcbComponent):
         self['2'].wire(n)
 
 class LED(PcbComponent):
-    def __init__(self, p, n, size='0805', **kwargs):
-        super(LED, self).__init__('LEDs', 'LED_'+size, **kwargs)
+    def __init__(self, p, n, **kwargs):
+        super(LED, self).__init__('LEDs', 'LED_D5.0mm', **kwargs)
         self.prefix = 'D'
-        self['1'].wire(p)
-        self['2'].wire(n)
+        self['1'].wire(n)
+        self['2'].wire(p)
 
 class Diode(PcbComponent):
-    def __init__(self, p, n, package='1206', **kwargs):
-        if package=='SMB':
-            part_name = 'D_SMB_Standard'
-        else:
-            part_name = 'D_' + package
-        super(Diode, self).__init__('Diodes_SMD', part_name, **kwargs)
+    def __init__(self, p, n, **kwargs):
+        super(Diode, self).__init__('Diodes_THT', 'D_DO-41_SOD81_P7.62mm_Horizontal', **kwargs)
         self.prefix = 'D'
-        self['1'].wire(p)
-        self['2'].wire(n)
+        self['1'].wire(n)
+        self['2'].wire(p)
 
 class Crystal(PcbComponent):
     def __init__(self, p, n, **kwargs):
@@ -117,8 +124,8 @@ class Varistor(PcbComponent):
         self['2'].wire(n)
 
 class PTC(PcbComponent):
-    def __init__(self, p, n, size='1812', **kwargs):
-        super(PTC, self).__init__('Resistors_SMD', 'R_'+size, **kwargs)
+    def __init__(self, p, n, **kwargs):
+        super(PTC, self).__init__('Resistors_SMD', 'R_1812_HandSoldering', **kwargs)
         self.prefix='Z'
         self['1'].wire(p)
         self['2'].wire(n)
@@ -182,11 +189,13 @@ class Header6x1(PcbComponent):
         self['5'].wire(pin5)
         self['6'].wire(pin6)
 
-class MountingHole(PcbComponent):
-    def __init__(self, pin, **kwargs): 
-        super(MountingHole, self).__init__('Mounting_Holes', 'MountingHole_3.2mm_M3', **kwargs)
-        self.prefix = 'H'
-        self['1'].wire(pin)
+class Header3x1(PcbComponent):
+    def __init__(self, pin1, pin2, pin3, **kwargs): 
+        super(Header3x1, self).__init__('Pin_Headers', 'Pin_Header_Straight_1x03_Pitch2.54mm', **kwargs)
+        self.prefix = 'J'
+        self['1'].wire(pin1)
+        self['2'].wire(pin2)
+        self['3'].wire(pin3)
 
 class DualOpAmp(PcbComponent):
     def __init__(self, **kwargs):
@@ -218,6 +227,24 @@ class UsbConnB(PcbComponent):
         self[self.mapping['D+']].wire(dp)
         self[self.mapping['GND']].wire(gnd)
         self[self.mapping['Shield']].wire(shield)
+
+class FTDI232(PcbComponent):
+    def __init__(self, **kwargs):
+        super(FTDI232, self).__init__('Housings_SSOP', 'SSOP-28_5.3x10.2mm_Pitch0.65mm', bufx=2, bufy=2, **kwargs)
+        self.mapping = {'TXD': '1', 'DTR': '2', 'RTS': '3', 'VCCIO': '4', 'RXD': '5', 'RI': '6', 'GND': ['7', '18', '21'], 'DCR': '9', 'DCD': '10', 'VCC': '20', 'CTS': '11', 'CBUS4': '12', 'TXLED': '22', 'CBUS2': '13', 'RXLED': '23', 'CBUS3': '14', 'USBD+': '15', 'AGND': '25', 'USBD-': '16', 'TEST': '26', '3V3OUT': '17', 'OSCI': '27', 'OSCO': '28', '~RESET~': '19'}
+        self.prefix = 'U'
+
+    def wire_power(self, vdd, gnd):
+        self.get_pin('VCC').wire(vdd)
+        self.get_pin('VCCIO').wire(vdd)
+        self.get_pin('TEST').wire(gnd)
+        self.get_pin('AGND').wire(gnd)
+        for pin in self.mapping['GND']:
+            self[pin].wire(gnd)
+
+    def wire_usb(self, dp, dn):
+        self.get_pin('USBD+').wire(dp)
+        self.get_pin('USBD-').wire(dn)
 
 class ATMEGA16U2(PcbComponent):
     def __init__(self, **kwargs):
