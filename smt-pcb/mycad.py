@@ -17,16 +17,63 @@ from pcbparser import PcbParser
 
 class BoardTools(object):
     @staticmethod
+    def get_board_extents(board_edge):
+        # extract list of x vals and y vals from board edge
+        x_vals = [coord[0] for coord in board_edge]
+        y_vals = [coord[1] for coord in board_edge]
+
+        # find bounding rectangle for the board
+        max_x = max(x_vals)
+        min_x = min(y_vals)
+        max_y = max(x_vals)
+        min_y = min(y_vals)
+
+        return max_x, min_x, max_y, min_y
+
+    @staticmethod
+    def get_board_center(board_edge):
+        # get extents of the board
+        max_x, min_x, max_y, min_y = BoardTools.get_board_extents(board_edge)
+
+        # compute center of board
+        cx = (max_x + min_x) / 2.0
+        cy = (max_y + min_y) / 2.0
+
+        return cx, cy
+
+    @staticmethod
+    def get_board_dims(board_edge):
+        # get extents of the board
+        max_x, min_x, max_y, min_y = BoardTools.get_board_extents(board_edge)
+
+        width = max_x - min_x
+        height = max_y - min_y
+
+        return width, height
+
+    @staticmethod
+    def get_board_ul(board_edge):
+        # get width and height of board
+        width, height = BoardTools.get_board_dims(board_edge)
+
+        # title block center (assuming A4 paper)
+        # TODO: handle paper sizes other than A4
+        disp_center_x = 297 / 2.0
+        disp_center_y = 210 / 2.0
+
+        # try to center components on board
+        xmid = 0.5 * width
+        x0 = disp_center_x - xmid
+        ymid = 0.5 * height
+        y0 = disp_center_y - ymid
+
+        # coordinate of board upper left
+        board_ul = Point(x0, y0)
+
+        return board_ul
+
+    @staticmethod
     def add_nets(pcb_dict, net_class_list, infile, outfile):
-        # storage for modified text of the kicad_pcb file
-        pass
-
-        # status variables to keep track of where we are in the file
-
-        # String containing name of the current module reference
-
-        # Integer containing number of the current pad
-
         # Create a dictionary mapping each unique net to an ID number
         net_dict = BoardTools.build_net_dict(pcb_dict)
 
@@ -82,7 +129,6 @@ class PcbDesign(object):
         self.def_route_const = def_route_const
         self.refdes_set = set()
         self.keepouts = []
-        self.vias = []
 
         self.comments = None
         self.title = None
@@ -144,9 +190,6 @@ class PcbDesign(object):
                 arg.parent = self
                 arg.name = self.nextRefdes(arg.prefix)
                 self[arg.name] = arg
-            elif isinstance(arg, PcbVia):
-                arg.name = self.nextRefdes(arg.prefix)
-                self.vias.append(arg)
             elif isinstance(arg, PcbKeepout):
                 arg.name = self.nextRefdes(arg.prefix)
                 self.keepouts.append(arg)
@@ -168,7 +211,7 @@ class PcbDesign(object):
         for arg in args:
             arg.wire(net_name)
 
-    def compile(self, smt_file_in=None):
+    def compile(self, json_file=None):
         # Create empty PCB
         pcb = Board()
 
@@ -192,7 +235,7 @@ class PcbDesign(object):
         pcb.save(self.fname)
 
         # write input file for SMT solver
-        self.write_smt_input(smt_file_in)
+        self.write_json_dict(json_file)
 
     def get_design_dict(self):
         design_dict = {}
@@ -202,8 +245,6 @@ class PcbDesign(object):
             for pad in comp:
                 if pad.net_name is not None:
                     design_dict[comp.name][pad.name] = pad.net_name
-        for via in self.vias:
-            design_dict[via.name] = {}
         for keepout in self.keepouts:
             design_dict[keepout.name] = {}
         return design_dict
@@ -262,21 +303,6 @@ class PcbDesign(object):
 
             # add type information
             module_dict[comp.name]['type'] = 'comp'
-
-        for via in self.vias:
-            module_dict[via.name] = {}
-            module_dict[via.name]['x'] = via.position.x - via.size / 2.0
-            module_dict[via.name]['y'] = via.position.y - via.size / 2.0
-            module_dict[via.name]['width'] = via.size
-            module_dict[via.name]['height'] = via.size
-            module_dict[via.name]['fixed'] = True
-            module_dict[via.name]['type'] = 'via'
-
-            # extra information needed to produce the via
-            module_dict[via.name]['xc'] = via.position.x
-            module_dict[via.name]['yc'] = via.position.y
-            module_dict[via.name]['drill'] = via.drill
-            module_dict[via.name]['size'] = via.size
 
         for keepout in self.keepouts:
             module_dict[keepout.name] = {}
@@ -338,23 +364,23 @@ class PcbDesign(object):
                     return pad, res
         return None
 
-    def write_smt_input(self, smt_file_in):
-        smt_input = {}
-        smt_input['dx'] = self.dx
-        smt_input['dy'] = self.dy
-        smt_input['width'] = self.width
-        smt_input['height'] = self.height
-        smt_input['module_dict'] = self.get_module_dict()
-        smt_input['design_dict'] = self.get_design_dict()
+    def write_json_dict(self, json_file):
+        json_dict = {}
+        json_dict['dx'] = self.dx
+        json_dict['dy'] = self.dy
+        json_dict['width'] = self.width
+        json_dict['height'] = self.height
+        json_dict['module_dict'] = self.get_module_dict()
+        json_dict['design_dict'] = self.get_design_dict()
 
         # add net class list information since this will have to
         # added as the last step
         net_class_list = [net_class.list_form() for
                           net_class in self.net_class_list]
-        smt_input['net_class_list'] = net_class_list
+        json_dict['net_class_list'] = net_class_list
 
         # add the board edge definition
-        smt_input['board_edge'] = [(p.x, p.y) for p in self.edge]
+        json_dict['board_edge'] = [(p.x, p.y) for p in self.edge]
 
         # print all unconstrained parts
         all_mods = self.get_all_mods()
@@ -412,11 +438,11 @@ class PcbDesign(object):
                       res[1].parent.name
                 continue
 
-        smt_input['routing_list'] = self.routing_list
+        json_dict['routing_list'] = self.routing_list
         print len(self.routing_list)
 
-        with open(smt_file_in, 'w') as f:
-            json.dump(smt_input, f)
+        with open(json_file, 'w') as f:
+            json.dump(json_dict, f, indent=2, sort_keys=True)
 
 
 class PcbPad(object):
@@ -457,7 +483,8 @@ class PcbComponent(object):
             rotation=None,
             mode=None,
             bufx=0.4,
-            bufy=0.4):
+            bufy=0.4,
+            **kwargs):
         # instantiate the part
         self.load_module(lib, part)
 
@@ -603,14 +630,6 @@ class NetClass(object):
 
         # Return the full command
         return cmd
-
-
-class PcbVia(object):
-    def __init__(self, position, size, drill):
-        self.position = position
-        self.size = size
-        self.drill = drill
-        self.prefix = 'V'
 
 
 class PcbKeepout(object):

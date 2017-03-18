@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 # Steven Herbst
 # sherbst@stanford.edu
@@ -7,6 +7,11 @@
 
 # Demo code to generate Freeduino
 
+# general imports
+from math import pi
+import argparse
+import sys
+
 # SMT-PCB specific imports
 from kicad.units import mil_to_mm
 from kicad.point import Point
@@ -14,17 +19,16 @@ from mycad import NetClass
 from mycad import PcbDesign
 from mycad import PcbKeepout
 from parts import *
-from math import pi
-import sys
-
 
 def main():
-    # read command-line arguments
-    json_fname = sys.argv[1]
-    pcb_fname = sys.argv[2]
+    # load command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--json')
+    parser.add_argument('--pcb')
+    args = parser.parse_args()
 
     # build Freeduino design
-    uno = Freeduino(json_fname, pcb_fname)
+    uno = Freeduino(args.json, args.pcb)
     uno.compile()
 
 
@@ -37,6 +41,7 @@ class Freeduino:
 
         # Convenience variable, stores the top of the board in mils
         # using the coordinate system of the mechanical drawing
+        # Reference: http://bit.ly/2mfbALQ
         self.top = 2100
 
         # Create PCB
@@ -58,23 +63,26 @@ class Freeduino:
         print 'Instantiating FTDI232'
         self.inst_ftdi()
 
-        # Reset capacitor between ATMEGA16 and ATMEGA328P
+        # Reset capacitor between FT232RL and ATMEGA328P
+        print 'Instantiating reset capacitor'
         self.pcb.add(Capacitor('DTR', 'RESET'))
 
-        # UART resistors between ATMEGA16 and ATMEGA328P
-        self.pcb.add(Resistor('M8RXD', 'IO0'))
-        self.pcb.add(Resistor('M8TXD', 'IO1'))
+        # UART resistors between FT232RL and ATMEGA328P
+        print 'Wiring UART interface'
+        self.pcb.add(Resistor('M8RXD', 'IO0', value=1e3))
+        self.pcb.add(Resistor('M8TXD', 'IO1', value=1e3))
 
         # ATMEGA328P, main microcontroller
         print 'Instantiating ATMEGA328P'
         self.inst_atmega328p()
 
         # Headers for power, analog, digital
+        print 'Instantiating headers'
         self.inst_headers()
 
         # Power LED
-        self.pcb.add(Resistor('+5V', 'PWR_LED'))
-        self.pcb.add(Resistor('+5V', 'PWR_LED'))
+        print 'Instantiating power LED'
+        self.pcb.add(Resistor('+5V', 'PWR_LED', value=330))
         self.pcb.add(LED('PWR_LED', 'GND'))
 
         # Power input and LDO
@@ -82,8 +90,9 @@ class Freeduino:
         self.inst_ldo()
 
         # IO13 LED
-        self.pcb.add(Resistor('SCK', 'SCK_R'))
-        self.pcb.add(LED('SCK_R', 'GND'))
+        print 'Instantiating IO13 LED'
+        self.pcb.add(Resistor('IO13', 'IO13_R', value=1e3))
+        self.pcb.add(LED('IO13_R', 'GND'))
 
         # Set up net classes
         print 'Building net classes'
@@ -101,18 +110,17 @@ class Freeduino:
 
         # put the parts on the board and save
         print 'Compiling PCB'
-        self.pcb.compile(smt_file_in=self.json_fname)
+        self.pcb.compile(json_file=self.json_fname)
 
     def inst_usb(self):
         # USB B connector
+        usb_pos = Point(-250, self.top - 1725, 'mils')
         usb = UsbConnB(vdd='XUSB',
                        dm='D-',
                        dp='D+',
                        gnd='GND',
                        shield='GND',
-                       position=Point(-250,
-                                      self.top - 1725,
-                                      'mils'),
+                       position=usb_pos,
                        rotation=pi,
                        mode='UL')
         self.pcb.add(usb)
@@ -124,7 +132,7 @@ class Freeduino:
         self.pcb.add(Capacitor('USBVCC', 'GND'))
 
         # Power header
-        self.pcb.add(Header3x1('USBVCC', '+5V', 'VCC'))
+        self.pcb.add(Header('USBVCC', '+5V', 'VCC'))
 
     def inst_ftdi(self):
         # USB-serial bridge
@@ -147,8 +155,8 @@ class Freeduino:
         # Wire UART LEDs
         ftdi232.get_pin('TXLED').wire('TXLED')
         ftdi232.get_pin('RXLED').wire('RXLED')
-        self.pcb.add(Resistor('TXLED', 'TXLED_R'))
-        self.pcb.add(Resistor('RXLED', 'RXLED_R'))
+        self.pcb.add(Resistor('TXLED', 'TXLED_R', value=1e3))
+        self.pcb.add(Resistor('RXLED', 'RXLED_R', value=1e3))
         self.pcb.add(LED('+5V', 'TXLED_R'))
         self.pcb.add(LED('+5V', 'RXLED_R'))
 
@@ -174,8 +182,8 @@ class Freeduino:
         self.add_dcap(atmega328.get_pin('AVCC'))
 
         # Analog reference
-        atmega328.aref.wire('AREF')
-        self.add_dcap(atmega328.aref)
+        atmega328.get_pin('AREF').wire('AREF')
+        self.add_dcap(atmega328.get_pin('AREF'))
 
         # Crystal circuit
         atmega328.wire_xtal('XTAL1', 'XTAL2')
@@ -189,68 +197,47 @@ class Freeduino:
         self.pcb.add(xtal, xcap1, xcap2)
 
         # create routing constraints
+        uxtal1 = atmega328.get_pin('XTAL1')
+        uxtal2 = atmega328.get_pin('XTAL2')
         self.pcb.add_pad_constr(xtal['1'], xcap1['1'], length=4)
         self.pcb.add_pad_constr(xtal['2'], xcap2['1'], length=4)
-        self.pcb.add_pad_constr(
-            xtal['1'],
-            atmega328.get_pin('XTAL1'),
-            length=4)
-        self.pcb.add_pad_constr(
-            xtal['2'],
-            atmega328.get_pin('XTAL2'),
-            length=4)
+        self.pcb.add_pad_constr(xtal['1'], uxtal1, length=4)
+        self.pcb.add_pad_constr(xtal['2'], uxtal2, length=4)
 
         # Reset circuit
-        atmega328.reset.wire('RESET')
-        self.pcb.add(Resistor('RESET', '+5V'))
+        atmega328.get_pin('~RESET~').wire('RESET')
+        self.pcb.add(Resistor('RESET', '+5V', value=10e3))
 
         # Reset button
         self.pcb.add(SPST('RESET', 'GND'))
 
         # ICSP connector
+        icsp_pos = Point(2505.512, self.top - 1198.031, 'mils')
         self.pcb.add(
             ICSP(
-                miso='MISO',
-                sck='SCK',
+                sck='IO13',
+                miso='IO12',
+                mosi='IO11',
                 reset='RESET',
                 vdd='+5V',
-                mosi='MOSI',
                 gnd='GND',
-                position=Point(
-                    2505.512,
-                    self.top -
-                    1198.031,
-                    'mils'),
+                position=icsp_pos,
                 mode='PIN1'))
 
         # Wire Port B
         pb = atmega328.PB
-        pb[5].wire('SCK')
-        pb[4].wire('MISO')
-        pb[3].wire('MOSI')
-        pb[2].wire('SS')
-        pb[1].wire('IO9')
-        pb[0].wire('IO8')
+        for idx in range(6):
+            pb[idx].wire('IO'+str(idx+8))
 
         # Wire Port C
         pc = atmega328.PC
-        pc[5].wire('AD5/SCL')
-        pc[4].wire('AD4/SDA')
-        pc[3].wire('AD3')
-        pc[2].wire('AD2')
-        pc[1].wire('AD1')
-        pc[0].wire('AD0')
+        for idx in range(6):
+            pc[idx].wire('AD'+str(idx))
 
         # Wire Port D
         pd = atmega328.PD
-        pd[7].wire('IO7')
-        pd[6].wire('IO6')
-        pd[5].wire('IO5')
-        pd[4].wire('IO4')
-        pd[3].wire('IO3')
-        pd[2].wire('IO2')
-        pd[1].wire('IO1')
-        pd[0].wire('IO0')
+        for idx in range(8):
+            pd[idx].wire('IO'+str(idx))
 
     def inst_ldo(self):
         # Barrel jack for 7-12V supply
@@ -269,28 +256,29 @@ class Freeduino:
 
     def inst_headers(self):
         # Digital 10-pin header
+        header_pos = Point(1640, self.top - 2000, 'mils')
+        header_rot = 3.0 * pi / 2.0
         self.pcb.add(
-            Header10x1(
+            Header(
                 'IO8',
                 'IO9',
-                'SS',
-                'MOSI',
-                'MISO',
-                'SCK',
+                'IO10',
+                'IO11',
+                'IO12',
+                'IO13',
                 'GND',
                 'AREF',
-                'AD4/SDA',
-                'AD5/SCL',
-                position=Point(
-                    1640,
-                    self.top - 2000,
-                    'mils'),
-                rotation=3 * pi / 2.0,
+                'AD4',
+                'AD5',
+                position=header_pos,
+                rotation=header_rot,
                 mode='PIN1'))
 
         # Digital 8-pin header
+        header_pos = Point(2500, self.top - 2000, 'mils')
+        header_rot = 3.0 * pi / 2.0
         self.pcb.add(
-            Header8x1(
+            Header(
                 'IO0',
                 'IO1',
                 'IO2',
@@ -299,32 +287,30 @@ class Freeduino:
                 'IO5',
                 'IO6',
                 'IO7',
-                position=Point(
-                    2500,
-                    self.top - 2000,
-                    'mils'),
-                rotation=3 * pi / 2.0,
+                position=header_pos,
+                rotation=header_rot,
                 mode='PIN1'))
 
         # Analog 6-pin header
+        header_pos=Point(2000, self.top - 100, 'mils')
+        header_rot=pi/2.0
         self.pcb.add(
-            Header6x1(
+            Header(
                 'AD0',
                 'AD1',
                 'AD2',
                 'AD3',
-                'AD4/SDA',
-                'AD5/SCL',
-                position=Point(
-                    2000,
-                    self.top - 100,
-                    'mils'),
-                rotation=pi / 2.0,
+                'AD4',
+                'AD5',
+                position=header_pos,
+                rotation=header_rot,
                 mode='PIN1'))
 
         # Power header
+        header_pos = Point(1100, self.top - 100, 'mils')
+        header_rot = pi / 2.0
         self.pcb.add(
-            Header8x1(
+            Header(
                 None,
                 '+5V',
                 'RESET',
@@ -333,44 +319,16 @@ class Freeduino:
                 'GND',
                 'GND',
                 'VIN',
-                position=Point(
-                    1100,
-                    self.top - 100,
-                    'mils'),
-                rotation=pi / 2.0,
+                position=header_pos,
+                rotation=header_rot,
                 mode='PIN1'))
 
     def inst_mounting_holes(self):
-        self.pcb.add(
-            MountingHole(
-                position=Point(
-                    600,
-                    self.top -
-                    2000,
-                    'mils'),
-                mode='CENTER'))
-        self.pcb.add(
-            MountingHole(
-                position=Point(
-                    550,
-                    self.top - 100,
-                    'mils'),
-                mode='CENTER'))
-        self.pcb.add(
-            MountingHole(
-                position=Point(
-                    2600,
-                    self.top -
-                    1400,
-                    'mils'),
-                mode='CENTER'))
-        self.pcb.add(
-            MountingHole(
-                position=Point(
-                    2600,
-                    self.top - 300,
-                    'mils'),
-                mode='CENTER'))
+        coords = [(600, 2000), (550, 100), (2600, 1400), (2600, 300)]
+        for coord in coords:
+            hole_pos = Point(coord[0], self.top-coord[1], 'mils')
+            hole = MountingHole(position=hole_pos, mode='CENTER')
+            self.pcb.add(hole)
 
     def define_edge(self):
         # create list of points representing the board edge
@@ -379,27 +337,15 @@ class Freeduino:
         points = [Point(x, self.top - y, 'mils') for x, y in points]
         self.pcb.edge = points
 
-        # TODO: automatically determine keepouts
-        self.pcb.add(
-            PcbKeepout(
-                width=mil_to_mm(
-                    2700 - 2540),
-                height=mil_to_mm(
-                    2100 - 1490),
-                position=Point(
-                    2540,
-                    self.top - 2100,
-                    'mils')))
-        self.pcb.add(
-            PcbKeepout(
-                width=mil_to_mm(
-                    2700 - 2600),
-                height=mil_to_mm(
-                    200 - 0),
-                position=Point(
-                    2600,
-                    self.top - 200,
-                    'mils')))
+        # TODO: automatically determine placement keepouts from edge geometry
+        #           width        height        ulx   uly
+        keepout1 = [2700 - 2540, 2100 - 1490, 2540, 2100]
+        keepout2 = [2700 - 2600,  200 -    0, 2600,  200]
+        keepouts = [keepout1, keepout2]
+
+        for k in keepouts:
+            k_pos = Point(k[2], self.top - k[3], 'mils')
+            self.pcb.add(PcbKeepout(width=k[0], height=k[1], position=k_pos))
 
     def add_dcap(self, pin, gnd=None, value=100e-9, length=4):
         if gnd is None:

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 # Steven Herbst
 # sherbst@stanford.edu
@@ -7,20 +7,24 @@
 
 # Demo code to generate Arduino Uno Rev3
 
-# SMT-PCB specific imports
-from kicad.point import Point
-from mycad import PcbDesign, PcbVia
-from parts import *
+# general imports
+import argparse
 import sys
 
+# SMT-PCB specific imports
+from kicad.point import Point
+from mycad import PcbDesign
+from parts import *
 
 def main():
-    # read command-line arguments
-    json_fname = sys.argv[1]
-    pcb_fname = sys.argv[2]
+    # load command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--json')
+    parser.add_argument('--pcb')
+    args = parser.parse_args()
 
     # build Arduino design
-    simple = Simple(json_fname, pcb_fname)
+    simple = Simple(args.json, args.pcb)
     simple.compile()
 
 
@@ -49,41 +53,8 @@ class Simple:
         r4 = Resistor('V3', 'GND')
         self.pcb.add(r1, r2, r3, r4)
 
-        print 'Adding mounting holes'
-        drill = 1
-        size = 2
-        width = 20
-        height = 20
-        self.pcb.add(
-            PcbVia(
-                position=Point(
-                    size,
-                    size),
-                size=size,
-                drill=drill))
-        self.pcb.add(
-            PcbVia(
-                position=Point(
-                    width - size,
-                    size),
-                size=size,
-                drill=drill))
-        self.pcb.add(
-            PcbVia(
-                position=Point(
-                    size,
-                    height -
-                    size),
-                size=size,
-                drill=drill))
-        self.pcb.add(
-            PcbVia(
-                position=Point(
-                    width - size,
-                    height - size),
-                size=size,
-                drill=drill))
-
+        width = 20.0
+        height = 20.0
         print 'Defining the board edge'
         self.pcb.edge = [
             Point(
@@ -97,7 +68,7 @@ class Simple:
         #self.pcb.add_pad_constr(r1['2'], r2['1'], 5)
 
         print 'Compiling PCB'
-        self.pcb.compile(smt_file_in=self.json_fname)
+        self.pcb.compile(json_file=self.json_fname)
 
 
 if __name__ == '__main__':

@@ -1,72 +1,65 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 # Steven Herbst
 # sherbst@stanford.edu
 #
 # CS448H Winter 2017
 
-# Demo code to generate Freeduino
-
-# SMT-PCB specific imports
-from kicad.point import Point
+# Code to expand the board edge by a certain amount
 
 # general imports
 import json
+import argparse
 
 # project imports
 from kicad.pcbnew.board import Board
+from kicad.point import Point
+from mycad import BoardTools
 
 
 def main():
-    # load board
-    pcb = Board.load('freeduino_edited.kicad_pcb')
+    # load command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--json')
+    parser.add_argument('--pcb')
+    parser.add_argument('--bufx', type=float, default=0.5)
+    parser.add_argument('--bufy', type=float, default=0.5)
+    args = parser.parse_args()
 
     # read board placement from SMT-PCB
     print "Reading output from SMT engine."
-    with open('freeduino.json', 'r') as f:
-        smt_output = json.load(f)
+    with open(args.json, 'r') as f:
+        json_dict = json.load(f)
 
-    # title block center (assuming A4 paper)
-    # TODO: handle paper sizes other than A4
-    disp_center_x = 297 / 2.0
-    disp_center_y = 210 / 2.0
+    # get the board edge
+    board_edge = json_dict['board_edge']
 
-    # try to center components on board
-    xmid = 0.5 * smt_output['width']
-    x0 = disp_center_x - xmid
-    ymid = 0.5 * smt_output['height']
-    y0 = disp_center_y - ymid
-
-    # coordinate of board upper left
-    board_ul = Point(x0, y0)
-
-    # draw the board edge
-    width = smt_output['width']
-    height = smt_output['height']
-    cx = width / 2
-    cy = height / 2
-
-    bufx = 0.5
-    bufy = 0.5
+    # compute board center
+    cx, cy = BoardTools.get_board_center(board_edge)
 
     edge = []
-    for x, y in smt_output['board_edge']:
+    for idx, (x, y) in enumerate(board_edge):
         if x < cx:
-            x = x - bufx
+            x = x - args.bufx
         else:
-            x = x + bufx
+            x = x + args.bufx
         if y < cy:
-            y = y - bufy
+            y = y - args.bufy
         else:
-            y = y + bufy
+            y = y + args.bufy
 
-        edge.append(Point(x, y) + board_ul)
+        board_edge[idx] = (x, y)
 
-    print edge
+    # write changes to JSON
+    with open(args.json, 'w') as f:
+        json.dump(json_dict, f, indent=2, sort_keys=True)
 
+    # write change to board
+    pcb = Board.load(args.pcb)
+    board_ul = BoardTools.get_board_ul(board_edge)
+    edge = [Point(x, y) + board_ul for x, y in board_edge]
     pcb.add_polyline(edge, layer='Edge.Cuts')
-
-    pcb.save('freeduino_final.kicad_pcb')
+    pcb.save()
 
 
 if __name__ == '__main__':

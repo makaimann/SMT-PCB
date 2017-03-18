@@ -8,13 +8,13 @@ SMT_PCB_DIR = ../smt-pcb
 all: first second third
 
 first:
-	time python2 $(PROJECT).py $(PROJECT).json $(PROJECT).kicad_pcb
+	time ./$(PROJECT).py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb
 
 second:
-	time python3 $(SMT_PCB_DIR)/smt_place.py $(PROJECT).json
+	time ./$(SMT_PCB_DIR)/smt_place.py --json $(PROJECT).json
 
 third:
-	time python2 $(SMT_PCB_DIR)/kicad_placer.py $(PROJECT).json $(PROJECT).kicad_pcb
+	time ./$(SMT_PCB_DIR)/kicad_placer.py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb
 
 view:
 	pcbnew $(PROJECT).kicad_pcb &

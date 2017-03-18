@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 # Steven Herbst
 # sherbst@stanford.edu
@@ -8,56 +8,68 @@
 # Code to automatically place components based on input from SMT-PNR
 
 # general imports
-import sys
 import json
-import math
+import argparse
+from math import degrees
 
 # project imports
 from kicad.pcbnew.board import Board
-from kicad.pcbnew.via import Via
 from kicad.point import Point
 from mycad import BoardTools
 
 
 def main():
-    # read command-line arguments
-    json_fname = sys.argv[1]
-    pcb_fname = sys.argv[2]
+    # load command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--json')
+    parser.add_argument('--pcb')
+    args = parser.parse_args()
 
     # read board placement from SMT-PCB
     print "Reading output from SMT engine."
-    with open(json_fname, 'r') as f:
-        smt_output = json.load(f)
+    with open(args.json, 'r') as f:
+        json_dict = json.load(f)
 
     # load board
-    pcb = Board.load(pcb_fname)
+    print 'Loading PCB file.'
+    pcb = Board.load(args.pcb)
 
-    # title block center (assuming A4 paper)
-    # TODO: handle paper sizes other than A4
-    disp_center_x = 297 / 2.0
-    disp_center_y = 210 / 2.0
+    # move parts to specified locations
+    print 'Placing all components.'
+    place_parts(json_dict, pcb)
 
-    # try to center components on board
-    xmid = 0.5 * smt_output['width']
-    x0 = disp_center_x - xmid
-    ymid = 0.5 * smt_output['height']
-    y0 = disp_center_y - ymid
+    # draw board edge
+    print 'Drawing board edge.'
+    draw_board_edge(json_dict, pcb)
 
-    # coordinate of board upper left
-    board_ul = Point(x0, y0)
+    # save board
+    print 'Saving PCB file.'
+    pcb.save()
+
+    # add net and net class information
+    print 'Adding nets and net classes to the PCB design.'
+    BoardTools.add_nets(
+        json_dict['design_dict'],
+        json_dict['net_class_list'],
+        args.pcb,
+        args.pcb)
+
+
+def place_parts(json_dict, pcb):
+    # compute upper left corner of board
+    board_ul = BoardTools.get_board_ul(json_dict['board_edge'])
 
     # place all components
-    print "Placing all components."
-    for name, module in smt_output['module_dict'].items():
+    for name, module in json_dict['module_dict'].items():
         if module['type'] == 'comp':
             # set rotation
             rot = module['rotation']
             pcb.modules[name].rotation = rot
 
             # make the buffer vector
-            if isclose(rot, 0) or isclose(rot, math.pi):
+            if round(degrees(rot)) in [0, 180]:
                 buf_space = Point(module['bufx'], module['bufy'])
-            elif isclose(rot, math.pi / 2) or isclose(rot, 3 * math.pi / 2):
+            elif round(degrees(rot)) in [90, 270]:
                 buf_space = Point(module['bufy'], module['bufx'])
             else:
                 raise Exception("Can't determine rotation.")
@@ -69,37 +81,21 @@ def main():
                 + buf_space                       \
                 + board_ul                        \
                 - pcb.modules[name].boundingBox.ul
-        elif module['type'] == 'via':
-            coord = Point(module['xc'], module['yc']) + board_ul
-            via = Via(
-                coord=coord,
-                diameter=module['size'],
-                drill=module['drill'])
-            pcb.add(via)
+
         elif module['type'] == 'keepout':
             pass
         else:
-            raise Exception('Unimplemented component type.')
+            raise Exception('Unimplemented component type: ' +
+                            str(module['type']))
 
-    # draw the board edge
-    edge = [Point(x, y) + board_ul for x, y in smt_output['board_edge']]
+
+def draw_board_edge(json_dict, pcb):
+    # compute upper left corner of board
+    board_ul = BoardTools.get_board_ul(json_dict['board_edge'])
+
+    # draw edge
+    edge = [Point(x, y) + board_ul for x, y in json_dict['board_edge']]
     pcb.add_polyline(edge, layer='Edge.Cuts')
-
-    # save board
-    print "Saving PCB file."
-    pcb.save()
-
-    # add nets and net classes to PCB design
-    print "Adding nets and net classes to the PCB design"
-    BoardTools.add_nets(
-        smt_output['design_dict'],
-        smt_output['net_class_list'],
-        pcb_fname,
-        pcb_fname)
-
-
-def isclose(a, b, tol=1e-3):
-    return abs(a - b) <= tol
 
 
 if __name__ == '__main__':

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Makai Mann (makaim@stanford.edu)
 # Steven Herbst (sherbst@stanford.edu)
 
@@ -8,9 +10,9 @@
 
 # general imports
 import math
-import sys
 import time
 import json
+import argparse
 
 # SMT-PCB specific imports
 import z3
@@ -20,34 +22,35 @@ import constraints
 
 
 def main():
-    # read command-line arguments
-    json_fname = sys.argv[1]
-
-    design, model, smt_dict = place_rects(
-        smt_file_in=json_fname, optimize=False)
-#    print_mesh(model, design)
-    write_placement(design, model, smt_dict, smt_file_out=json_fname)
-
-
-def place_rects(smt_file_in, optimize=False):
-    # TODO: add documentation for function
+    # load command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--json')
+    args = parser.parse_args()
 
     # read in SMT input
-    with open(smt_file_in, 'r') as f:
-        smt_dict = json.load(f)
+    with open(args.json, 'r') as f:
+        json_dict = json.load(f)
+
+    design, model, json_dict = place_rects(
+        json_dict=json_dict, optimize=False)
+    write_placement(design, model, json_dict, json_file=args.json)
+
+
+def place_rects(json_dict, optimize=False):
+    # TODO: add documentation for function
 
     # create the placer grid
-    grid = PlaceGrid(width=smt_dict['width'], height=smt_dict['height'],
-                     dx=smt_dict['dx'], dy=smt_dict['dy'])
+    grid = PlaceGrid(width=json_dict['width'], height=json_dict['height'],
+                     dx=json_dict['dx'], dy=json_dict['dy'])
 
     # create the component list
     comps_list = []
-    for name, module in smt_dict['module_dict'].items():
+    for name, module in json_dict['module_dict'].items():
         comps_list.append(grid.make_comp(name, module))
 
     # create the routing list
     routing_list = []
-    for req in smt_dict['routing_list']:
+    for req in json_dict['routing_list']:
         routing_list.append(grid.make_constraint(req))
 
     # create the placement fabric
@@ -87,19 +90,19 @@ def place_rects(smt_file_in, optimize=False):
     # create the model
     model = s.model()
 
-    return d, model, smt_dict
+    return d, model, json_dict
 
 
-def write_placement(design, model, smt_dict, smt_file_out):
+def write_placement(design, model, json_dict, json_file):
     # writes the 2D placement information to a file
-    dx = smt_dict['dx']
-    dy = smt_dict['dy']
+    dx = json_dict['dx']
+    dy = json_dict['dy']
 
-    # update components in smt_dict
+    # update components in json_dict
     for comp in design.components:
         # get the reference to the current module from the SMT input dictionary
         name = comp.name
-        mod = smt_dict['module_dict'][name]
+        mod = json_dict['module_dict'][name]
 
         # if this module has a fixed position, skip it
         if mod['fixed']:
@@ -113,8 +116,8 @@ def write_placement(design, model, smt_dict, smt_file_out):
         # get the rotation
         mod['rotation'] = comp.pos.get_rotation(model)
 
-    with open(smt_file_out, 'w') as f:
-        json.dump(smt_dict, f)
+    with open(json_file, 'w') as f:
+        json.dump(json_dict, f, indent=2, sort_keys=True)
 
 
 class PlaceGrid(object):
