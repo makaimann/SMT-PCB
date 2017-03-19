@@ -1,5 +1,5 @@
-PROJECT = freeduino
-# PROJECT = simple
+# PROJECT = freeduino
+PROJECT = simple
 
 SMT_PCB_DIR = ../smt-pcb
 FREE_ROUTE_DIR = $(HOME)/NetBeansProjects/FreeRouter/dist
@@ -24,6 +24,9 @@ view:
 route:
 	cd $(FREE_ROUTE_DIR); \
 	java -jar "FreeRouter.jar"
+
+fab:
+	time ./$(SMT_PCB_DIR)/edge.py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb
 
 lint_code:
 	-flake8 --max-complexity 6 --ignore=F405,F403,N801,N802

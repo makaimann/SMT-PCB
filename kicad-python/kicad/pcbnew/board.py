@@ -99,6 +99,12 @@ class Board(object):
         self._obj.Add(obj.native_obj)
         return obj
 
+    def clearLayer(self, layer):
+        """Removes all drawings from the specified layer"""
+        for d in self._obj.GetDrawings():
+            if d.GetLayerName() == layer:
+                self._obj.Remove(d)
+
     @property
     def comments(self):
         titleBlock = self._obj.GetTitleBlock()

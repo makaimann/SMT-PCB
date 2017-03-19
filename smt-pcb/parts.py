@@ -23,7 +23,7 @@ class MountingHole(PcbComponent):
 
 
 class Resistor(PcbComponent):
-    def __init__(self, p, n, value=None, **kwargs):
+    def __init__(self, p, n, value=1e3, **kwargs):
         lib = 'Resistors_THT'
         mod = 'R_Axial_DIN0204_L3.6mm_D1.6mm_P7.62mm_Horizontal'
 

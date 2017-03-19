@@ -33,6 +33,7 @@ def main():
 
     # get the board edge
     board_edge = json_dict['board_edge']
+    board_ul = Point(*BoardTools.get_board_ul(board_edge))
 
     # compute board center
     cx, cy = BoardTools.get_board_center(board_edge)
@@ -50,13 +51,9 @@ def main():
 
         board_edge[idx] = (px, py)
 
-    # write changes to JSON
-    with open(args.json, 'w') as f:
-        json.dump(json_dict, f, indent=2, sort_keys=True)
-
     # write change to board
     pcb = Board.load(args.pcb)
-    board_ul = Point(*BoardTools.get_board_ul(board_edge))
+    pcb.clearLayer('Edge.Cuts')
     edge = [Point(x, y) + board_ul for x, y in board_edge]
     pcb.add_polyline(edge, layer='Edge.Cuts')
     pcb.save()
