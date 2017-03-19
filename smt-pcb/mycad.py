@@ -248,6 +248,9 @@ class PcbDesign(object):
             # add buffer information
             module_dict[item.name]['bufx'] = item.bufx
             module_dict[item.name]['bufy'] = item.bufy
+            
+            # add ordering information
+            module_dict[item.name]['partno'] = item.partno
 
         return module_dict
 
@@ -392,14 +395,19 @@ class PcbComponent(object):
             self,
             lib,
             part,
+            partno=None,
             position=None,
             rotation=None,
             mode=None,
             bufx=0.4,
             bufy=0.4,
             **kwargs):
+
         # instantiate the part
         self.load_module(lib, part)
+
+        # ordering information
+        self.partno = partno
 
         # set the position and rotation
         self.position = position
@@ -566,6 +574,7 @@ class PcbKeepout(object):
         self.bufy = 0.0
         self.width = width
         self.height = height
+        self.partno = None
         self.prefix = 'K'
 
     def get_fixed_pos(self):

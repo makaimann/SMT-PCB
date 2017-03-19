@@ -15,6 +15,9 @@ second:
 third:
 	time ./$(SMT_PCB_DIR)/kicad_placer.py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb
 
+bom:
+	time ./$(SMT_PCB_DIR)/digikey_bom.py --json $(PROJECT).json --bom $(PROJECT).csv
+
 view:
 	pcbnew $(PROJECT).kicad_pcb &
 
@@ -31,6 +34,7 @@ tidy_code:
 	autopep8 --in-place --max-line-length=79 --aggressive --aggressive *.py
 
 clean:
-	rm -f *.kicad_pcb *.net *.dict *.pro *.pyc *.pcb *.ses *.dsn *.kicad_pcb-bak *.log *.json *.rules
+	rm -f *.kicad_pcb *.net *.dict *.pro *.pyc *.pcb *.ses *.dsn *.kicad_pcb-bak 
+	rm -f *.log *.json *.rules *.csv
 
 .PHONY: all explain install clean tidy_code lint_code

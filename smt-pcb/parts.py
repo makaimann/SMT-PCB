@@ -23,15 +23,20 @@ class MountingHole(PcbComponent):
 
 
 class Resistor(PcbComponent):
-    def __init__(self, p, n, size='PTH', **kwargs):
-        if size in ['0402', '0603', '0805', '1206', '1210']:
-            lib = 'Resistors_SMD'
-            mod = 'R_' + size
-        elif size == 'PTH':
-            lib = 'Resistors_THT'
-            mod = 'R_Axial_DIN0204_L3.6mm_D1.6mm_P7.62mm_Horizontal'
+    def __init__(self, p, n, value=None, **kwargs):
+        lib = 'Resistors_THT'
+        mod = 'R_Axial_DIN0204_L3.6mm_D1.6mm_P7.62mm_Horizontal'
 
-        super(Resistor, self).__init__(lib, mod, **kwargs)
+        # TODO: query DigiKey for parts
+        partnos = { 330: 'BC3292CT-ND',
+                    1e3: 'BC3238CT-ND',
+                   10e3: 'BC3239CT-ND'}
+        if value in partnos:
+            partno = partnos[value]
+        else:
+            raise Exception('Resistor value not supported.')
+        
+        super(Resistor, self).__init__(lib, mod, partno, **kwargs)
 
         self.prefix = 'R'
         self['1'].wire(p)
@@ -50,7 +55,16 @@ class Capacitor(PcbComponent):
             lib = 'Capacitors_THT'
             mod = 'CP_Radial_D6.3mm_P2.50mm'
 
-        super(Capacitor, self).__init__(lib, mod, **kwargs)
+        # TODO: query DigiKey for parts
+        partnos = { 22e-12: 'BC1005CT-ND',
+                    100e-9: 'BC1084CT-ND',
+                     47e-6: '1189-2912-ND'}
+        if value in partnos:
+            partno = partnos[value]
+        else:
+            raise Exception('Capacitor value not supported.')
+
+        super(Capacitor, self).__init__(lib, mod, partno, **kwargs)
 
         self.prefix = 'C'
 
@@ -62,6 +76,7 @@ class LDO_5v0(PcbComponent):
     def __init__(self, vin, gnd, vout, **kwargs):
         lib = 'TO_SOT_Packages_THT'
         mod = 'TO-220_Horizontal'
+        partno = '497-1443-5-ND'
 
         super(LDO_5v0, self).__init__(lib, mod, **kwargs)
 
@@ -77,8 +92,9 @@ class BarrelJack(PcbComponent):
     def __init__(self, vdd, gnd, **kwargs):
         lib = 'Connectors'
         mod = 'BARREL_JACK'
+        partno = 'CP-102AH-ND'
 
-        super(BarrelJack, self).__init__(lib, mod, **kwargs)
+        super(BarrelJack, self).__init__(lib, mod, partno, **kwargs)
         self.prefix = 'X'
 
         self['1'].wire(vdd)
@@ -90,8 +106,9 @@ class SPST(PcbComponent):
     def __init__(self, p, n, **kwargs):
         lib = 'Buttons_Switches_SMD'
         mod = 'SW_SPST_EVQP0'
+        partno = 'P12966SDKR-ND'
 
-        super(SPST, self).__init__(lib, mod, **kwargs)
+        super(SPST, self).__init__(lib, mod, partno, **kwargs)
         self.prefix = 'SW'
 
         self['1'].wire(p)
@@ -99,11 +116,20 @@ class SPST(PcbComponent):
 
 
 class LED(PcbComponent):
-    def __init__(self, p, n, **kwargs):
+    def __init__(self, p, n, color='red', **kwargs):
         lib = 'LEDs'
         mod = 'LED_D5.0mm'
 
-        super(LED, self).__init__(lib, mod, **kwargs)
+        if color.lower() in ['r', 'red']:
+            partno = '160-1127-ND'
+        elif color.lower() in ['g', 'green']:
+            partno = '160-1130-ND'
+        elif color.lower() in ['y', 'yellow']:
+            partno = '160-1851-ND'
+        else:
+            raise Exception('Invalid LED color.')
+
+        super(LED, self).__init__(lib, mod, partno, **kwargs)
         self.prefix = 'D'
 
         self['1'].wire(n)
@@ -114,8 +140,9 @@ class Diode(PcbComponent):
     def __init__(self, p, n, **kwargs):
         lib = 'Diodes_THT'
         mod = 'D_DO-41_SOD81_P7.62mm_Horizontal'
+        partno = '1N4001-TPMSCT-ND'
 
-        super(Diode, self).__init__(lib, mod, **kwargs)
+        super(Diode, self).__init__(lib, mod, partno, **kwargs)
         self.prefix = 'D'
 
         self['1'].wire(n)
@@ -126,8 +153,9 @@ class Crystal(PcbComponent):
     def __init__(self, p, n, **kwargs):
         lib = 'Crystals'
         mod = 'Crystal_HC49-U_Vertical'
+        partno = 'X1103-ND'
 
-        super(Crystal, self).__init__(lib, mod, **kwargs)
+        super(Crystal, self).__init__(lib, mod, partno, **kwargs)
 
         self.prefix = 'X'
         self['1'].wire(p)
@@ -139,8 +167,9 @@ class PTC(PcbComponent):
         # define component footprint
         lib = 'Resistors_SMD'
         mod = 'R_1812_HandSoldering'
+        partno = 'MF-MSMF050-2CT-ND'
 
-        super(PTC, self).__init__(lib, mod, **kwargs)
+        super(PTC, self).__init__(lib, mod, partno, **kwargs)
 
         self.prefix = 'Z'
         self['1'].wire(p)
@@ -152,8 +181,9 @@ class ICSP(PcbComponent):
         # define component footprint
         lib = 'Pin_Headers'
         mod = 'Pin_Header_Straight_2x03_Pitch2.54mm'
+        partno = '609-3218-ND'
 
-        super(ICSP, self).__init__(lib, mod, **kwargs)
+        super(ICSP, self).__init__(lib, mod, partno, **kwargs)
         self.prefix = 'ICSP'
 
         # define the standard ICSP pinout
@@ -176,16 +206,33 @@ class Header(PcbComponent):
                 kwargs['cols'] = len(args) / kwargs['rows']
             else:
                 raise Exception('Cannot automatically detect header size.')
-        if 'pitch' not in kwargs:
-            kwargs['pitch'] = 2.54
 
         # assemble the component name
         config = '%dx%02d' % (kwargs['rows'], kwargs['cols'])
-        pitch = '%0.2fmm' % kwargs['pitch']
-        mod_lib = 'Pin_Headers'
-        mod_name = 'Pin_Header_Straight_' + config + '_Pitch' + pitch
+        pitch = '2.54mm'
+        lib = 'Pin_Headers'
+        mod = 'Pin_Header_Straight_' + config + '_Pitch' + pitch
 
-        super(Header, self).__init__(mod_lib, mod_name, **kwargs)
+        
+        # TODO: query DigiKey for parts
+
+        # determine part number table based on header type
+        if kwargs['type'].lower() in ['m', 'male']:
+            partnos = { '1x03': '732-5316-ND' }
+        elif kwargs['type'].lower() in ['f', 'female']:
+            partnos = { '1x06': 'S7004-ND',
+                        '1x08': 'S7006-ND',
+                        '1x10': 'S7008-ND'}
+        else:
+            raise Exception('Header type not supported.')
+        
+        # look up part number
+        if config in partnos:
+            partno = partnos[config]
+        else:
+            raise Exception('Header config not supported.')
+
+        super(Header, self).__init__(lib, mod, partno, **kwargs)
         self.prefix = 'J'
 
         for idx, net in enumerate(args):
@@ -194,7 +241,11 @@ class Header(PcbComponent):
 
 class UsbConnB(PcbComponent):
     def __init__(self, vdd, dm, dp, gnd, shield, **kwargs):
-        super(UsbConnB, self).__init__('Connectors', 'USB_B', **kwargs)
+        lib = 'Connectors'
+        mod = 'USB_B'
+        partno = 'ED2982-ND'
+
+        super(UsbConnB, self).__init__(lib, mod, partno, **kwargs)
 
         self.init_mapping()
         self.prefix = 'J'
@@ -224,8 +275,9 @@ class FTDI232(PcbComponent):
 
         lib = 'Housings_SSOP'
         mod = 'SSOP-28_5.3x10.2mm_Pitch0.65mm'
+        partno = '768-1007-1-ND'
 
-        super(FTDI232, self).__init__(lib, mod, **kwargs)
+        super(FTDI232, self).__init__(lib, mod, partno, **kwargs)
 
         self.init_mapping()
         self.prefix = 'U'
@@ -283,7 +335,8 @@ class ATMEGA328P(PcbComponent):
 
         lib = 'Housings_DIP'
         mod = 'DIP-28_W7.62mm_Socket'
-        super(ATMEGA328P, self).__init__(lib, mod, **kwargs)
+        partno = ['ED3050-5-ND', '1050-1019-ND']
+        super(ATMEGA328P, self).__init__(lib, mod, partno, **kwargs)
 
         self.init_mapping()
         self.prefix = 'U'

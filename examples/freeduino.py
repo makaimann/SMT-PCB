@@ -81,7 +81,7 @@ class Freeduino:
         # Power LED
         print 'Instantiating power LED'
         self.pcb.add(Resistor('+5V', 'PWR_LED', value=330))
-        self.pcb.add(LED('PWR_LED', 'GND'))
+        self.pcb.add(LED('PWR_LED', 'GND', color='red'))
 
         # Power input and LDO
         print 'Instantiating LDO'
@@ -90,7 +90,7 @@ class Freeduino:
         # IO13 LED
         print 'Instantiating IO13 LED'
         self.pcb.add(Resistor('IO13', 'IO13_R', value=1e3))
-        self.pcb.add(LED('IO13_R', 'GND'))
+        self.pcb.add(LED('IO13_R', 'GND', color='yellow'))
 
         # Set up net classes
         print 'Building net classes'
@@ -130,7 +130,7 @@ class Freeduino:
         self.pcb.add(Capacitor('USBVCC', 'GND'))
 
         # Power header
-        self.pcb.add(Header('USBVCC', '+5V', 'VCC'))
+        self.pcb.add(Header('USBVCC', '+5V', 'VCC', type='male'))
 
     def inst_ftdi(self):
         # USB-serial bridge
@@ -155,8 +155,8 @@ class Freeduino:
         ftdi232.get_pin('RXLED').wire('RXLED')
         self.pcb.add(Resistor('TXLED', 'TXLED_R', value=1e3))
         self.pcb.add(Resistor('RXLED', 'RXLED_R', value=1e3))
-        self.pcb.add(LED('+5V', 'TXLED_R'))
-        self.pcb.add(LED('+5V', 'RXLED_R'))
+        self.pcb.add(LED('+5V', 'TXLED_R', color='red'))
+        self.pcb.add(LED('+5V', 'RXLED_R', color='red'))
 
         # USB connection
         ftdi232.wire_usb(dp='D+', dn='D-')
@@ -259,6 +259,7 @@ class Freeduino:
                 'AREF',
                 'AD4',
                 'AD5',
+                type = 'female',
                 position=header_pos,
                 rotation=header_rot,
                 mode='PIN1'))
@@ -276,6 +277,7 @@ class Freeduino:
                 'IO5',
                 'IO6',
                 'IO7',
+                type = 'female',
                 position=header_pos,
                 rotation=header_rot,
                 mode='PIN1'))
@@ -291,6 +293,7 @@ class Freeduino:
                 'AD3',
                 'AD4',
                 'AD5',
+                type = 'female',
                 position=header_pos,
                 rotation=header_rot,
                 mode='PIN1'))
@@ -308,6 +311,7 @@ class Freeduino:
                 'GND',
                 'GND',
                 'VIN',
+                type = 'female',
                 position=header_pos,
                 rotation=header_rot,
                 mode='PIN1'))
