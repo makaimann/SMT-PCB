@@ -5,7 +5,7 @@ SMT_PCB_DIR = ../smt-pcb
 FREE_ROUTE_DIR = $(HOME)/NetBeansProjects/FreeRouter/dist
 PLOT_NAME = plot
 
-all: first second third
+place: first second third
 
 first:
 	./$(PROJECT).py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb 
