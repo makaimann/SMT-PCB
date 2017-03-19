@@ -25,10 +25,9 @@ class PcbDesign(object):
             dy=1.0,
             refdes_max_count=1000,
             def_route_constr=10,
-            max_net_degree=3):
+            use_def_constr=True):
 
         self.fname = fname
-        self.max_net_degree = max_net_degree
         self.comp_dict = {}
         self.net_class_list = []
         self.routing_list = []
@@ -39,6 +38,7 @@ class PcbDesign(object):
         self.def_route_constr = def_route_constr
         self.refdes_set = set()
         self.keepouts = []
+        self.use_def_constr = use_def_constr
 
         self.comments = None
         self.title = None
@@ -315,7 +315,8 @@ class PcbDesign(object):
 
         # add the list of pad placement constraints
         self.make_net_constraints()
-        self.add_default_constr()
+        if self.use_def_constr:
+            self.add_default_constr()
         print 'Number of pad-pad constraints:', len(self.routing_list)
         json_dict['routing_list'] = self.routing_list
 

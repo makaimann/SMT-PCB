@@ -43,7 +43,7 @@ class Freeduino:
         self.top = 2100
 
         # Create PCB
-        self.pcb = PcbDesign(pcb_fname, dx=0.1, dy=0.1)
+        self.pcb = PcbDesign(pcb_fname, dx=0.1, dy=0.1, use_def_constr=False)
         self.pcb.title = 'SMT-PCB Freeduino'
         self.pcb.comments = ['Authors:',
                              'Steven Herbst <sherbst@stanford.edu>',
