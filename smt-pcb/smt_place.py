@@ -19,53 +19,47 @@ import z3
 import design
 import position
 import constraints
+from board_tools import BoardTools
 
 
 def main():
     # load command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--json')
+    parser.add_argument('--optimize', action='store_true')
+    parser.add_argument('--dx', type=float, default=0.1)
+    parser.add_argument('--dy', type=float, default=0.1)
     args = parser.parse_args()
 
+    # determine the placement
+    design, model = place_rects(args)
+
+    # write the placement to file
+    write_placement(design, model, args)
+
+
+def place_rects(args):
     # read in SMT input
     with open(args.json, 'r') as f:
         json_dict = json.load(f)
 
-    design, model, json_dict = place_rects(
-        json_dict=json_dict, optimize=False)
-    write_placement(design, model, json_dict, json_file=args.json)
-
-
-def place_rects(json_dict, optimize=False):
-    # TODO: add documentation for function
-
     # create the placer grid
-    grid = PlaceGrid(width=json_dict['width'], height=json_dict['height'],
-                     dx=json_dict['dx'], dy=json_dict['dy'])
-
-    # create the component list
-    comps_list = []
-    for name, module in json_dict['module_dict'].items():
-        comps_list.append(grid.make_comp(name, module))
-
-    # create the routing list
-    routing_list = []
-    for req in json_dict['routing_list']:
-        routing_list.append(grid.make_constraint(req))
-
-    # create the placement fabric
+    width, height = BoardTools.get_board_dims(json_dict['board_edge'])
+    grid = PlaceGrid(width=width, height=height, dx=args.dx, dy=args.dy)
     fab = design.Fabric(grid.place_dims)
 
-    # create the problem
+    # Create the design
+    comps_list = grid.make_comps_list(json_dict['module_dict'])
+    routing_list = grid.make_routing_list(json_dict['routing_list'])
     d = design.Design(comps_list, routing_list, fab, position.RotIntXY)
+
+    # Add constraints
     d.add_constraint_generator('no_overlap', constraints.no_overlap)
     d.add_pad_cg('max_dist', constraints.pad_max_dists)
 
-    if optimize:
-        d.add_pad_opt('min_total_dist', constraints.pad_dists)
-
     # create the solver
-    if optimize:
+    if args.optimize:
+        d.add_pad_opt('min_total_dist', constraints.pad_dists)
         s = z3.Optimize()
     else:
         s = z3.Solver()
@@ -74,7 +68,7 @@ def place_rects(json_dict, optimize=False):
     s.add(d.constraints)
 
     # set up the optimization, if desired
-    if optimize:
+    if args.optimize:
         for func in d.r_opt_param:
             s.minimize(func)
 
@@ -87,16 +81,13 @@ def place_rects(json_dict, optimize=False):
     if result == z3.unsat:
         raise Exception('Problem is unsat.')
 
-    # create the model
-    model = s.model()
-
-    return d, model, json_dict
+    return d, s.model()
 
 
-def write_placement(design, model, json_dict, json_file):
-    # writes the 2D placement information to a file
-    dx = json_dict['dx']
-    dy = json_dict['dy']
+def write_placement(design, model, args):
+    # read in SMT input
+    with open(args.json, 'r') as f:
+        json_dict = json.load(f)
 
     # update components in json_dict
     for comp in design.components:
@@ -110,13 +101,13 @@ def write_placement(design, model, json_dict, json_file):
 
         # get the x, y position of the component as placed
         (x, y) = comp.pos.get_coordinates(model)
-        mod['x'] = x * dx
-        mod['y'] = y * dy
+        mod['x'] = x * args.dx
+        mod['y'] = y * args.dy
 
         # get the rotation
         mod['rotation'] = comp.pos.get_rotation(model)
 
-    with open(json_file, 'w') as f:
+    with open(args.json, 'w') as f:
         json.dump(json_dict, f, indent=2, sort_keys=True)
 
 
@@ -152,6 +143,18 @@ class PlaceGrid(object):
     @property
     def board_height_snapped(self):
         return self.snap_up_y(self.height)
+
+    def make_comps_list(self, module_dict):
+        comps_list = []
+        for name, module in module_dict.items():
+            comps_list.append(self.make_comp(name, module))
+        return comps_list
+
+    def make_routing_list(self, raw_routing_list):
+        routing_list = []
+        for req in raw_routing_list:
+            routing_list.append(self.make_constraint(req))
+        return routing_list
 
     def make_comp(self, name, module):
         if module['fixed']:

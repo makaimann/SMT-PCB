@@ -9,12 +9,12 @@
 
 # general imports
 import argparse
-import sys
 
 # SMT-PCB specific imports
 from kicad.point import Point
 from mycad import PcbDesign
 from parts import *
+
 
 def main():
     # load command-line arguments
@@ -36,7 +36,7 @@ class Simple:
         self.pcb_fname = pcb_fname
 
         # Create PCB
-        self.pcb = PcbDesign(pcb_fname, dx=0.1, dy=0.1, def_route_const=0.5)
+        self.pcb = PcbDesign(pcb_fname, dx=0.1, dy=0.1, def_route_constr=0.5)
         self.pcb.title = 'SMT-PCB Simple'
         self.pcb.comments = ['Authors:',
                              'Steven Herbst <sherbst@stanford.edu>',
@@ -63,9 +63,6 @@ class Simple:
                 width, height), Point(
                     0, height), Point(
                         0, 0)]
-
-        print 'Defining routing constraint'
-        #self.pcb.add_pad_constr(r1['2'], r2['1'], 5)
 
         print 'Compiling PCB'
         self.pcb.compile(json_file=self.json_fname)

@@ -10,15 +10,13 @@
 # general imports
 from math import pi
 import argparse
-import sys
 
 # SMT-PCB specific imports
-from kicad.units import mil_to_mm
 from kicad.point import Point
 from mycad import NetClass
 from mycad import PcbDesign
-from mycad import PcbKeepout
 from parts import *
+
 
 def main():
     # load command-line arguments
@@ -187,22 +185,13 @@ class Freeduino:
 
         # Crystal circuit
         atmega328.wire_xtal('XTAL1', 'XTAL2')
+        self.pcb.add(Crystal('XTAL1', 'XTAL2'))
+        self.pcb.add(Capacitor('XTAL1', 'GND', value=22e-12))
+        self.pcb.add(Capacitor('XTAL2', 'GND', value=22e-12))
 
-        # create parts
-        xtal = Crystal('XTAL1', 'XTAL2')
-        xcap1 = Capacitor('XTAL1', 'GND', value=22e-12)
-        xcap2 = Capacitor('XTAL2', 'GND', value=22e-12)
-
-        # add to board
-        self.pcb.add(xtal, xcap1, xcap2)
-
-        # create routing constraints
-        uxtal1 = atmega328.get_pin('XTAL1')
-        uxtal2 = atmega328.get_pin('XTAL2')
-        self.pcb.add_pad_constr(xtal['1'], xcap1['1'], length=4)
-        self.pcb.add_pad_constr(xtal['2'], xcap2['1'], length=4)
-        self.pcb.add_pad_constr(xtal['1'], uxtal1, length=4)
-        self.pcb.add_pad_constr(xtal['2'], uxtal2, length=4)
+        # Crystal routing constraints
+        self.pcb.add_net_constr('XTAL1', length=4)
+        self.pcb.add_net_constr('XTAL2', length=4)
 
         # Reset circuit
         atmega328.get_pin('~RESET~').wire('RESET')
@@ -227,17 +216,17 @@ class Freeduino:
         # Wire Port B
         pb = atmega328.PB
         for idx in range(6):
-            pb[idx].wire('IO'+str(idx+8))
+            pb[idx].wire('IO' + str(idx + 8))
 
         # Wire Port C
         pc = atmega328.PC
         for idx in range(6):
-            pc[idx].wire('AD'+str(idx))
+            pc[idx].wire('AD' + str(idx))
 
         # Wire Port D
         pd = atmega328.PD
         for idx in range(8):
-            pd[idx].wire('IO'+str(idx))
+            pd[idx].wire('IO' + str(idx))
 
     def inst_ldo(self):
         # Barrel jack for 7-12V supply
@@ -292,8 +281,8 @@ class Freeduino:
                 mode='PIN1'))
 
         # Analog 6-pin header
-        header_pos=Point(2000, self.top - 100, 'mils')
-        header_rot=pi/2.0
+        header_pos = Point(2000, self.top - 100, 'mils')
+        header_rot = pi / 2.0
         self.pcb.add(
             Header(
                 'AD0',
@@ -326,7 +315,7 @@ class Freeduino:
     def inst_mounting_holes(self):
         coords = [(600, 2000), (550, 100), (2600, 1400), (2600, 300)]
         for coord in coords:
-            hole_pos = Point(coord[0], self.top-coord[1], 'mils')
+            hole_pos = Point(coord[0], self.top - coord[1], 'mils')
             hole = MountingHole(position=hole_pos, mode='CENTER')
             self.pcb.add(hole)
 
@@ -336,16 +325,6 @@ class Freeduino:
                   (2700, 1490), (2700, 200), (2600, 100), (2600, 0), (0, 0)]
         points = [Point(x, self.top - y, 'mils') for x, y in points]
         self.pcb.edge = points
-
-        # TODO: automatically determine placement keepouts from edge geometry
-        #           width        height        ulx   uly
-        keepout1 = [2700 - 2540, 2100 - 1490, 2540, 2100]
-        keepout2 = [2700 - 2600,  200 -    0, 2600,  200]
-        keepouts = [keepout1, keepout2]
-
-        for k in keepouts:
-            k_pos = Point(k[2], self.top - k[3], 'mils')
-            self.pcb.add(PcbKeepout(width=k[0], height=k[1], position=k_pos))
 
     def add_dcap(self, pin, gnd=None, value=100e-9, length=4):
         if gnd is None:

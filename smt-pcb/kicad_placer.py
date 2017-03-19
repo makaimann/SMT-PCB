@@ -15,7 +15,7 @@ from math import degrees
 # project imports
 from kicad.pcbnew.board import Board
 from kicad.point import Point
-from mycad import BoardTools
+from board_tools import BoardTools
 
 
 def main():
@@ -57,7 +57,7 @@ def main():
 
 def place_parts(json_dict, pcb):
     # compute upper left corner of board
-    board_ul = BoardTools.get_board_ul(json_dict['board_edge'])
+    board_ul = Point(*BoardTools.get_board_ul(json_dict['board_edge']))
 
     # place all components
     for name, module in json_dict['module_dict'].items():
@@ -91,7 +91,7 @@ def place_parts(json_dict, pcb):
 
 def draw_board_edge(json_dict, pcb):
     # compute upper left corner of board
-    board_ul = BoardTools.get_board_ul(json_dict['board_edge'])
+    board_ul = Point(*BoardTools.get_board_ul(json_dict['board_edge']))
 
     # draw edge
     edge = [Point(x, y) + board_ul for x, y in json_dict['board_edge']]

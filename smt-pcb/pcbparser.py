@@ -6,7 +6,6 @@
 # Library enables user to parse kicad_pcb file
 # Should be compatible with python2 and python3
 
-import time
 import re
 
 
@@ -37,44 +36,39 @@ class PcbParser(object):
         # parse Lisp-like syntax
         # modified from: http://norvig.com/lispy2.html
 
-        print 'Parsing PCB file.'
-        start = time.time()
-
         # read the *.kicad_pcb file token by token
         with open(infile, 'r') as f:
             inport = InPort(f)
-
-            def read_ahead(token):
-                # If the current token is a left parenthesis,
-                # start building a new sub-list
-                if token == '(':
-                    lis = []
-                    while True:
-                        token = inport.next_token()
-                        if token == ')':
-                            return lis
-                        else:
-                            lis.append(read_ahead(token))
-                # Otherwise the token must be an atom,
-                # unless there is a syntax error
-                elif token == ')':
-                    raise Exception('Unexpected )')
-                elif token is None:
-                    raise Exception('Unexpected EOF')
-                else:
-                    return token
 
             # Read the first token to start parsing
             token1 = inport.next_token()
             if token1 is None:
                 tree = None
             else:
-                tree = read_ahead(token1)
-
-        end = time.time()
-        print 'Parsing took', end - start, 'seconds'
+                tree = PcbParser.parse_recursive(inport, token1)
 
         return tree
+
+    @staticmethod
+    def parse_recursive(inport, token):
+        # If the current token is a left parenthesis,
+        # start building a new sub-list
+        if token == '(':
+            lis = []
+            while True:
+                token = inport.next_token()
+                if token == ')':
+                    return lis
+                else:
+                    lis.append(PcbParser.parse_recursive(inport, token))
+        # Otherwise the token must be an atom,
+        # unless there is a syntax error
+        elif token == ')':
+            raise Exception('Unexpected )')
+        elif token is None:
+            raise Exception('Unexpected EOF')
+        else:
+            return token
 
     @staticmethod
     def write_pcb_file(tree, outfile):
@@ -138,11 +132,11 @@ class PcbParser(object):
                     net_id = net_dict[net_name]
                     val.append(['net', str(net_id), net_name])
 
-# class used to parse Lisp-like syntax
-# modified from: http://norvig.com/lispy2.html
-
 
 class InPort(object):
+    # class used to parse Lisp-like syntax
+    # modified from: http://norvig.com/lispy2.html
+
     # Tokenizer splits on parentheses but respects double-quoted strings
     # TODO: handle multi-line quotes
     tokenizer = r'''\s*([()]|"[^"]*"|[^\s(")]*)(.*)'''

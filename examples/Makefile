@@ -1,9 +1,8 @@
-#PROJECT = freeduino
-#PROJECT = xtal
-#PROJECT = arduino
-PROJECT = simple
+PROJECT = freeduino
+# PROJECT = simple
 
 SMT_PCB_DIR = ../smt-pcb
+FREE_ROUTE_DIR = $(HOME)/NetBeansProjects/FreeRouter/dist
 
 all: first second third
 
@@ -18,6 +17,10 @@ third:
 
 view:
 	pcbnew $(PROJECT).kicad_pcb &
+
+route:
+	cd $(FREE_ROUTE_DIR); \
+	java -jar "FreeRouter.jar"
 
 lint_code:
 	-flake8 --max-complexity 6 --ignore=F405,F403,N801,N802

@@ -5,108 +5,16 @@
 
 # Library enables user to instantiate new modules from KiCAD library
 
+# general imports
 import os
-from kicad.pcbnew.module import Module
-from kicad.pcbnew.board import Board
-from kicad.point import Point
 from datetime import date
 import pcbnew
 import json
-from pcbparser import PcbParser
 
-
-class BoardTools(object):
-    @staticmethod
-    def get_board_extents(board_edge):
-        # extract list of x vals and y vals from board edge
-        x_vals = [coord[0] for coord in board_edge]
-        y_vals = [coord[1] for coord in board_edge]
-
-        # find bounding rectangle for the board
-        max_x = max(x_vals)
-        min_x = min(y_vals)
-        max_y = max(x_vals)
-        min_y = min(y_vals)
-
-        return max_x, min_x, max_y, min_y
-
-    @staticmethod
-    def get_board_center(board_edge):
-        # get extents of the board
-        max_x, min_x, max_y, min_y = BoardTools.get_board_extents(board_edge)
-
-        # compute center of board
-        cx = (max_x + min_x) / 2.0
-        cy = (max_y + min_y) / 2.0
-
-        return cx, cy
-
-    @staticmethod
-    def get_board_dims(board_edge):
-        # get extents of the board
-        max_x, min_x, max_y, min_y = BoardTools.get_board_extents(board_edge)
-
-        width = max_x - min_x
-        height = max_y - min_y
-
-        return width, height
-
-    @staticmethod
-    def get_board_ul(board_edge):
-        # get width and height of board
-        width, height = BoardTools.get_board_dims(board_edge)
-
-        # title block center (assuming A4 paper)
-        # TODO: handle paper sizes other than A4
-        disp_center_x = 297 / 2.0
-        disp_center_y = 210 / 2.0
-
-        # try to center components on board
-        xmid = 0.5 * width
-        x0 = disp_center_x - xmid
-        ymid = 0.5 * height
-        y0 = disp_center_y - ymid
-
-        # coordinate of board upper left
-        board_ul = Point(x0, y0)
-
-        return board_ul
-
-    @staticmethod
-    def add_nets(pcb_dict, net_class_list, infile, outfile):
-        # Create a dictionary mapping each unique net to an ID number
-        net_dict = BoardTools.build_net_dict(pcb_dict)
-
-        # Parse the exisiting PCB file
-        tree = PcbParser.read_pcb_file(infile)
-
-        # add nets to PCB file
-        PcbParser.add_net_count(tree, net_dict)
-        PcbParser.add_net_decls(tree, net_dict)
-        PcbParser.add_nets_to_modules(tree, pcb_dict, net_dict)
-
-        # add net classes to PCB file
-        PcbParser.populate_net_classes(tree, net_class_list)
-
-        # Write updated PCB information
-        PcbParser.write_pcb_file(tree, outfile)
-
-    @staticmethod
-    def build_net_dict(pcb_dict):
-        # build set of unique nets
-        net_set = set()
-        for mod_dict in pcb_dict.values():
-            for net in mod_dict.values():
-                net_set.add(net)
-
-        # make a dictionary mapping each net to an id
-        net_id = 1
-        net_dict = {}
-        for net in net_set:
-            net_dict[net] = net_id
-            net_id = net_id + 1
-
-        return net_dict
+# project-specific
+from kicad.pcbnew.module import Module
+from kicad.pcbnew.board import Board
+from kicad.point import Point
 
 
 class PcbDesign(object):
@@ -116,17 +24,19 @@ class PcbDesign(object):
             dx=1.0,
             dy=1.0,
             refdes_max_count=1000,
-            def_route_const=10,
+            def_route_constr=10,
             max_net_degree=3):
+
         self.fname = fname
         self.max_net_degree = max_net_degree
         self.comp_dict = {}
         self.net_class_list = []
         self.routing_list = []
+        self.net_constr_list = []
         self.dx = dx
         self.dy = dy
         self.refdes_max_count = refdes_max_count
-        self.def_route_const = def_route_const
+        self.def_route_constr = def_route_constr
         self.refdes_set = set()
         self.keepouts = []
 
@@ -167,7 +77,7 @@ class PcbDesign(object):
 
         # maximum length constraint
         if length is None:
-            length = self.def_route_const
+            length = self.def_route_constr
 
         # always add minimum edge distances of each pad involved
         length = length + pad1.edgeDist + pad2.edgeDist
@@ -175,14 +85,20 @@ class PcbDesign(object):
 
         self.routing_list.append(req)
 
-    def add_net_constr(self, net, length=None, include_fixed=True):
+        # print constraint
+        ineq = '|' + str(pad1) + ' - ' + str(pad2) + '| < %0.3fmm' % length
+        print 'Added constraint: ' + ineq
+
+    def add_net_constr(self, net, length=None):
+        net_constr = {'net': net, 'length': length}
+        self.net_constr_list.append(net_constr)
+
+    def make_net_constraints(self):
         net_dict = self.get_net_dict()
-        pads = net_dict[net]
-        for pad0, pad1 in zip(pads[:-1], pads[1:]):
-            both_free = (pad0.parent.position is None and
-                         pad1.parent.position is None)
-            if include_fixed or both_free:
-                self.add_pad_constr(pad0, pad1, length)
+        for net_constr in self.net_constr_list:
+            pads = net_dict[net_constr['net']]
+            for pad0, pad1 in zip(pads[:-1], pads[1:]):
+                self.add_pad_constr(pad0, pad1, net_constr['length'])
 
     def add(self, *args):
         for arg in args:
@@ -211,7 +127,40 @@ class PcbDesign(object):
         for arg in args:
             arg.wire(net_name)
 
+    def add_keepouts(self, min_kw=1e-3, min_kh=1e-3):
+        # TODO: handle more general cases
+
+        # determine the board height from the edge
+        ylist = [p.y for p in self.edge]
+        height = max(ylist) - min(ylist)
+
+        for p0, p1 in zip(self.edge[:-1], self.edge[1:]):
+            x0, y0 = p0
+            x1, y1 = p1
+
+            if x1 > x0:
+                # quadrants I and IV
+                kw = x1 - x0
+                kh = max(y0, y1)
+                kx = x0
+                ky = 0
+            elif x0 > x1:
+                # quadrants II and III
+                kw = x0 - x1
+                kh = height - min(y0, y1)
+                kx = x1
+                ky = min(y0, y1)
+            else:
+                continue
+
+            if kw > min_kw and kh > min_kw:
+                kpos = Point(kx, ky)
+                self.add(PcbKeepout(width=kw, height=kh, position=kpos))
+
     def compile(self, json_file=None):
+        # add keepouts based on the edge
+        self.add_keepouts()
+
         # Create empty PCB
         pcb = Board()
 
@@ -219,7 +168,16 @@ class PcbDesign(object):
         for comp in self:
             pcb.add(comp.module)
 
-        # make title block
+        # make the title block
+        self.make_title_block(pcb)
+
+        # save PCB file without connectivity information
+        pcb.save(self.fname)
+
+        # write input file for SMT solver
+        self.write_json_dict(json_file)
+
+    def make_title_block(self, pcb):
         if self.comments:
             pcb.comments = self.comments
         if self.title:
@@ -230,12 +188,6 @@ class PcbDesign(object):
             pcb.company = self.company
         if self.date:
             pcb.date = self.date
-
-        # save PCB file without connectivity information
-        pcb.save(self.fname)
-
-        # write input file for SMT solver
-        self.write_json_dict(json_file)
 
     def get_design_dict(self):
         design_dict = {}
@@ -261,57 +213,41 @@ class PcbDesign(object):
     def get_module_dict(self):
         module_dict = {}
 
-        for comp in self:
-            module_dict[comp.name] = {}
+        items = self.comp_dict.values() + self.keepouts
 
-            # will already have been rotated by this point
-            module_dict[comp.name]['rotation'] = comp.rotation
+        for item in items:
+            # add type information
+            if isinstance(item, PcbComponent):
+                type_str = 'comp'
+            elif isinstance(item, PcbKeepout):
+                type_str = 'keepout'
+            else:
+                raise Exception('Unsupported item type.')
+
+            module_dict[item.name] = {}
+            module_dict[item.name]['type'] = type_str
+
+            # define rotation
+            module_dict[item.name]['rotation'] = item.rotation
 
             # set fixed position if provided
-            if comp.position is not None:
-                if comp.mode.lower() == 'ul':
-                    ul_relative = Point(0, 0)
-                elif comp.mode.lower() == 'pin1':
-                    # Compute the position of the upper-left corner
-                    # of the device relative to PIN1
-                    ul_relative = comp.boundingBox.ul - comp['1'].pad.center
-                elif comp.mode.lower() == 'center':
-                    comp_center = Point.wrap(comp.module._obj.GetCenter())
-                    ul_relative = comp.boundingBox.ul - comp_center
-                else:
-                    raise Exception('Unimplemented positioning mode.')
-
-                # compute fixed position of upper-left corner of device
-                fixed_pos = comp.position + ul_relative
-
-                # store result in SMT input dictionary
-                module_dict[comp.name]['x'] = fixed_pos.x - comp.bufx
-                module_dict[comp.name]['y'] = fixed_pos.y - comp.bufy
-                module_dict[comp.name]['fixed'] = True
+            if item.position is not None:
+                fixed_pos = item.get_fixed_pos()
+                module_dict[item.name]['x'] = fixed_pos.x - item.bufx
+                module_dict[item.name]['y'] = fixed_pos.y - item.bufy
+                module_dict[item.name]['fixed'] = True
             else:
-                module_dict[comp.name]['x'] = None
-                module_dict[comp.name]['y'] = None
-                module_dict[comp.name]['fixed'] = False
+                module_dict[item.name]['x'] = None
+                module_dict[item.name]['y'] = None
+                module_dict[item.name]['fixed'] = False
 
             # add size information
-            module_dict[comp.name]['width'] = comp.width + 2 * comp.bufx
-            module_dict[comp.name]['height'] = comp.height + 2 * comp.bufy
+            module_dict[item.name]['width'] = item.width + 2 * item.bufx
+            module_dict[item.name]['height'] = item.height + 2 * item.bufy
 
             # add buffer information
-            module_dict[comp.name]['bufx'] = comp.bufx
-            module_dict[comp.name]['bufy'] = comp.bufy
-
-            # add type information
-            module_dict[comp.name]['type'] = 'comp'
-
-        for keepout in self.keepouts:
-            module_dict[keepout.name] = {}
-            module_dict[keepout.name]['x'] = keepout.position.x
-            module_dict[keepout.name]['y'] = keepout.position.y
-            module_dict[keepout.name]['width'] = keepout.width
-            module_dict[keepout.name]['height'] = keepout.height
-            module_dict[keepout.name]['fixed'] = True
-            module_dict[keepout.name]['type'] = 'keepout'
+            module_dict[item.name]['bufx'] = item.bufx
+            module_dict[item.name]['bufy'] = item.bufy
 
         return module_dict
 
@@ -322,10 +258,6 @@ class PcbDesign(object):
     @edge.setter
     def edge(self, value):
         self.edge_points = value
-        self.width = max([point[0] for point in self.edge_points])
-        self.height = max([point[1] for point in self.edge_points])
-        print('Detected PCB width=%0.3fmm, height=%0.3fmm'
-              % (self.width, self.height))
 
     def get_all_mods(self):
         # generate set of fixed modules
@@ -366,10 +298,6 @@ class PcbDesign(object):
 
     def write_json_dict(self, json_file):
         json_dict = {}
-        json_dict['dx'] = self.dx
-        json_dict['dy'] = self.dy
-        json_dict['width'] = self.width
-        json_dict['height'] = self.height
         json_dict['module_dict'] = self.get_module_dict()
         json_dict['design_dict'] = self.get_design_dict()
 
@@ -382,67 +310,49 @@ class PcbDesign(object):
         # add the board edge definition
         json_dict['board_edge'] = [(p.x, p.y) for p in self.edge]
 
-        # print all unconstrained parts
-        all_mods = self.get_all_mods()
-        fixed_mods = self.get_fixed_mods()
-        constr_mods = self.get_constr_mods()
-        unconstr_mods = all_mods - fixed_mods - constr_mods
-
-        print 'Unconstrained modules:', unconstr_mods
-
-        self.get_net_dict()
-        constr_length = self.def_route_const
-
-        while unconstr_mods:
-            for mod in unconstr_mods:
-                if self.get_conn_pair(mod, fixed_mods):
-                    break
-                if self.get_conn_pair(mod, constr_mods):
-                    break
-            unconstr_mods.remove(mod)
-
-            # try connecting to a fixed module
-            res = self.get_conn_pair(mod, fixed_mods)
-            if res:
-                self.add_pad_constr(res[0], res[1], length=constr_length)
-                fixed_mods.add(res[0].parent.name)
-                fixed_mods.add(res[1].parent.name)
-                print 'Adding constraint:', \
-                      res[0].parent.name,   \
-                      '<->',                \
-                      res[1].parent.name
-                continue
-
-            # try connecting to a module with a pad constraint
-            res = self.get_conn_pair(mod, constr_mods)
-            if res:
-                self.add_pad_constr(res[0], res[1], length=constr_length)
-                constr_mods.add(res[0].parent.name)
-                constr_mods.add(res[1].parent.name)
-                print 'Adding constraint:', \
-                      res[0].parent.name,   \
-                      '<->',                \
-                      res[1].parent.name
-                continue
-
-            # try connecting to an unconstrained module
-            res = self.get_conn_pair(mod, unconstr_mods)
-            if res:
-                self.add_pad_constr(res[0], res[1], length=constr_length)
-                constr_mods.add(res[0].parent.name)
-                constr_mods.add(res[1].parent.name)
-                unconstr_mods.remove(res[1].parent.name)
-                print 'Adding constraint:', \
-                      res[0].parent.name,   \
-                      '<->',                \
-                      res[1].parent.name
-                continue
-
+        # add the list of pad placement constraints
+        self.make_net_constraints()
+        self.add_default_constr()
+        print 'Number of pad-pad constraints:', len(self.routing_list)
         json_dict['routing_list'] = self.routing_list
-        print len(self.routing_list)
 
         with open(json_file, 'w') as f:
             json.dump(json_dict, f, indent=2, sort_keys=True)
+
+    def add_default_constr(self):
+
+        # generate sets of components with different kinds of constraints
+        all_mods = self.get_all_mods()
+        pinned_mods = self.get_fixed_mods()
+        constr_mods = self.get_constr_mods()
+        unconstr_mods = all_mods - pinned_mods - constr_mods
+
+        # Print the unconstrained modules
+        print 'Unconstrained modules:', map(str, unconstr_mods)
+
+        # Define the search order used to create constraints
+        order = [(pinned_mods, pinned_mods),
+                 (constr_mods, constr_mods),
+                 (unconstr_mods, constr_mods)]
+
+        # try to add a constraint to each part in unconstr
+        while unconstr_mods:
+
+            # preferential search for an unconstrained module
+            for search, replace in order:
+                for mod in unconstr_mods:
+                    res = self.get_conn_pair(mod, search - set([mod]))
+                    if res:
+                        break
+                if res:
+                    break
+
+            if res:
+                self.add_pad_constr(res[0], res[1])
+                replace.add(res[0].parent.name)
+                replace.add(res[1].parent.name)
+
+            unconstr_mods.remove(mod)
 
 
 class PcbPad(object):
@@ -452,6 +362,9 @@ class PcbPad(object):
 
     def wire(self, net_name):
         self.net_name = net_name
+
+    def __str__(self):
+        return self.parent.name + '.' + self.name
 
     @property
     def name(self):
@@ -539,6 +452,19 @@ class PcbComponent(object):
             if pad.net_name == net_name:
                 return pad
         return None
+
+    def get_fixed_pos(self):
+        if self.mode.lower() == 'ul':
+            ul_relative = Point(0, 0)
+        elif self.mode.lower() == 'pin1':
+            ul_relative = self.boundingBox.ul - self['1'].pad.center
+        elif self.mode.lower() == 'center':
+            comp_center = Point.wrap(self.module._obj.GetCenter())
+            ul_relative = self.boundingBox.ul - comp_center
+        else:
+            raise Exception('Unimplemented positioning mode.')
+
+        return self.position + ul_relative
 
     def __contains__(self, item):
         return item in self.pad_dict
@@ -634,7 +560,13 @@ class NetClass(object):
 
 class PcbKeepout(object):
     def __init__(self, position, width, height):
+        self.rotation = 0.0
         self.position = position
+        self.bufx = 0.0
+        self.bufy = 0.0
         self.width = width
         self.height = height
         self.prefix = 'K'
+
+    def get_fixed_pos(self):
+        return self.position

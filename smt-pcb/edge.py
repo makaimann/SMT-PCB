@@ -14,7 +14,7 @@ import argparse
 # project imports
 from kicad.pcbnew.board import Board
 from kicad.point import Point
-from mycad import BoardTools
+from board_tools import BoardTools
 
 
 def main():
@@ -40,15 +40,15 @@ def main():
     edge = []
     for idx, (x, y) in enumerate(board_edge):
         if x < cx:
-            x = x - args.bufx
+            px = x - args.bufx
         else:
-            x = x + args.bufx
+            px = x + args.bufx
         if y < cy:
-            y = y - args.bufy
+            py = y - args.bufy
         else:
-            y = y + args.bufy
+            py = y + args.bufy
 
-        board_edge[idx] = (x, y)
+        board_edge[idx] = (px, py)
 
     # write changes to JSON
     with open(args.json, 'w') as f:
@@ -56,7 +56,7 @@ def main():
 
     # write change to board
     pcb = Board.load(args.pcb)
-    board_ul = BoardTools.get_board_ul(board_edge)
+    board_ul = Point(*BoardTools.get_board_ul(board_edge))
     edge = [Point(x, y) + board_ul for x, y in board_edge]
     pcb.add_polyline(edge, layer='Edge.Cuts')
     pcb.save()
