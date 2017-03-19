@@ -301,3 +301,21 @@ class Board(object):
         return self.add(
             drawing.Arc(center, radius, start_angle, stop_angle,
                         layer, width, board=self))
+
+    def add_zone(self, outline, net, layer, clearance):
+        # Create the new area
+        net = self.nets[net].netcode
+        layer = self.get_layer(layer)
+        x0 = outline[0]._obj.x
+        y0 = outline[0]._obj.y
+        hatch = pcbnew.CPolyLine.DIAGONAL_EDGE
+        area = self._obj.InsertArea(net, 0, layer, x0, y0, hatch)
+
+        # Create the outline
+        border = area.Outline()
+        for point in outline[1:]:
+            border.AppendCorner(point._obj.x, point._obj.y)
+        border.CloseLastContour()
+
+        # Fill in the outline
+        area.BuildFilledSolidAreasPolygons(self._obj)

@@ -10,6 +10,7 @@
 # general imports
 import json
 import argparse
+import pcbnew
 
 # project imports
 from kicad.pcbnew.board import Board
@@ -22,6 +23,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--json')
     parser.add_argument('--pcb')
+    parser.add_argument('--fill_top', default='GND')
+    parser.add_argument('--fill_bot', default='GND')
     parser.add_argument('--bufx', type=float, default=0.5)
     parser.add_argument('--bufy', type=float, default=0.5)
     args = parser.parse_args()
@@ -51,11 +54,32 @@ def main():
 
         board_edge[idx] = (px, py)
 
-    # write change to board
-    pcb = Board.load(args.pcb)
-    pcb.clearLayer('Edge.Cuts')
+    # create the new board edge
     edge = [Point(x, y) + board_ul for x, y in board_edge]
+
+    # create zone outline for copper pours
+    minx = min([p.x for p in edge])
+    maxx = max([p.x for p in edge])
+    miny = min([p.y for p in edge])
+    maxy = max([p.y for p in edge])
+    ul = Point(minx, miny)
+    ur = Point(maxx, miny)
+    lr = Point(maxx, maxy)
+    ll = Point(minx, maxy)
+    outline = [ul, ur, lr, ll]
+
+    # write changes to board
+    pcb = Board.load(args.pcb)
+    
+    # write edge
+    pcb.clearLayer('Edge.Cuts')
     pcb.add_polyline(edge, layer='Edge.Cuts')
+
+    # write zones
+    clearance = max(args.bufx, args.bufy)
+    pcb.add_zone(outline, args.fill_top, 'F.Cu', clearance)
+    pcb.add_zone(outline, args.fill_bot, 'B.Cu', clearance)
+
     pcb.save()
 
 
