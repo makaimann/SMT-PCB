@@ -7,24 +7,24 @@ PLOT_NAME = plot
 
 all: clean place route fab
 
-place: first second third
+place: describe_design run_smt_solver kicad_place_parts
 
-first:
+describe_design:
 	./$(PROJECT).py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb 
 
-second:
+run_smt_solver:
 	./$(SMT_PCB_DIR)/smt_place.py --json $(PROJECT).json 
 
-third:
+kicad_place_parts:
 	./$(SMT_PCB_DIR)/kicad_placer.py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb
 
 view:
 	pcbnew $(PROJECT).kicad_pcb &
 
 route:
-	./$(SMT_PCB_DIR)/export_specctra.py --pcb $(PROJECT).kicad_pcb
-	./$(SMT_PCB_DIR)/run_freerouting.py --pcb $(PROJECT).kicad_pcb --route_dir $(FREE_ROUTE_DIR)
-	./$(SMT_PCB_DIR)/import_specctra.py --pcb $(PROJECT).kicad_pcb
+	./$(SMT_PCB_DIR)/export_specctra.py --pcb $(PROJECT).kicad_pcb --dsn $(PROJECT).dsn
+	./$(SMT_PCB_DIR)/run_freerouting.py --dsn $(PROJECT).dsn --route_dir $(FREE_ROUTE_DIR)
+	./$(SMT_PCB_DIR)/import_specctra.py --pcb $(PROJECT).kicad_pcb --ses $(PROJECT).ses
 
 fab: edge gerbers bom
 

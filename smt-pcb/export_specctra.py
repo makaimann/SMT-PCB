@@ -4,32 +4,38 @@ import pyautogui as gui
 import time
 import subprocess
 import argparse
+import os 
+import os.path
+
+from gui_tools import waitToClick, loc
 
 def main():
     # load command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--pcb')
+    parser.add_argument('--dsn')
     args = parser.parse_args()
 
     gui.PAUSE = 0.75
 
     subprocess.Popen(['pcbnew', args.pcb])
-    time.sleep(2)
     
     # click on FreeRouting button
-    gui.click(989, 61)
+    waitToClick('freerouting')
 
     # Export specctra
-    gui.hotkey('enter')
+    waitToClick('export_dsn')
 
-    # Save to default file name
-    gui.hotkey('enter')
+    # Save DSN file
+    args.dsn = os.path.expanduser(args.dsn)
+    args.dsn = os.path.abspath(args.dsn)
+    gui.hotkey('ctrl', 'a')
+    gui.hotkey('backspace')
+    gui.typewrite(args.dsn)
+    waitToClick('save_button')
 
     # Close the FreeRouting dialog
-    gui.hotkey('down')
-    gui.hotkey('down')
-    gui.hotkey('right')
-    gui.hotkey('enter')
+    waitToClick('ok_button')
     
     # Quit program
     gui.hotkey('ctrl', 'q')

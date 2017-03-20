@@ -4,35 +4,46 @@ import pyautogui as gui
 import time
 import subprocess
 import argparse
+import os
+import os.path
+
+from gui_tools import waitToClick, loc
 
 def main():
     # load command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--pcb')
+    parser.add_argument('--ses')
     args = parser.parse_args()
 
     gui.PAUSE = 0.75
 
     subprocess.Popen(['pcbnew', args.pcb])
-    time.sleep(2)
     
     # click on FreeRouting button
-    gui.click(989, 61)
+    waitToClick('freerouting')
 
     # back import specctra
-    gui.hotkey('down')
-    gui.hotkey('enter')
+    waitToClick('import_ses')
+
+    # if there is no text bar to fill addresses, 
+    # click the pencil icon to make it appear
+    if not loc('location_field'):
+        waitToClick('pencil_icon')
 
     # open file
-    gui.hotkey('enter')
+    args.ses = os.path.expanduser(args.ses)
+    args.ses = os.path.abspath(args.ses)
+    gui.hotkey('ctrl', 'a')
+    gui.hotkey('backspace')
+    gui.typewrite(args.ses)
+    waitToClick('open_button')
 
     # rebuild connectivity
     gui.hotkey('enter')
 
     # click OK button
-    gui.hotkey('down')
-    gui.hotkey('right')
-    gui.hotkey('enter')
+    waitToClick('ok_button')
 
     # save
     gui.hotkey('ctrl', 's')

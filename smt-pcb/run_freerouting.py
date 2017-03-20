@@ -1,66 +1,63 @@
 #!/usr/bin/env python2
 
 import pyautogui as gui
-import time
 import subprocess
 import argparse
 import os
 import os.path
 
+from gui_tools import waitToClick, waitFor, getImagePath
+
 def main():
     # load command-line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--pcb')
+    parser.add_argument('--dsn')
     parser.add_argument('--route_dir')
     args = parser.parse_args()
 
     gui.PAUSE = 0.75
 
+    # run FreeRouting in the correct directory
     args.route_dir = os.path.expanduser(args.route_dir)
-    print args.route_dir
+    args.route_dir = os.path.abspath(args.route_dir)
     subprocess.Popen(['java', '-jar', 'FreeRouter.jar'], cwd=args.route_dir)
-    time.sleep(2)
-    
+
     # click on open design button
-    gui.click(181, 68)
+    waitToClick('open_design')
 
     # select folder
-    gui.click(513, 369)
+    args.dsn = os.path.expanduser(args.dsn)
+    args.dsn = os.path.abspath(args.dsn)
+    gui.typewrite(args.dsn)
     gui.hotkey('enter')
-
-    # select file
-    gui.click(513, 369)
-    gui.hotkey('enter')
-    time.sleep(3)
 
     # run autorouter
-    gui.click(380, 84)
+    waitFor('autorouter')
+    gui.hotkey('enter')
+    waitToClick('autorouter')
 
     # wait until routing finishes 
-    mydir = os.path.dirname(os.path.abspath(__file__))
-    im = os.path.join(mydir, 'images', 'trace_length.png')
-    res = gui.locateOnScreen(im)
-    while not res:
-        time.sleep(1)
-        res = gui.locateOnScreen(im)
+    waitFor('trace_length')
 
     # click on center of screen
-    gui.click(683, 508)
+    width, height = gui.size()
+    gui.click(width/2, height/2)
 
     # click on file menu
-    gui.click(137, 58)
+    waitToClick('file_menu')
 
     # click on export SES
-    gui.click(212, 212)
+    waitToClick('export_ses')
     gui.hotkey('enter')
 
     # close window
-    gui.click(133, 34)
-    gui.hotkey('enter')
+    waitToClick('file_menu')
+    waitToClick('cancel_and_exit')
 
     # close window
-    gui.click(79, 35)   
-
+    im = getImagePath('freerouter_title_bar')
+    title_bar = gui.locateOnScreen(im)
+    waitToClick('close_button', region=title_bar)
 
 if __name__ == '__main__':
     main()
