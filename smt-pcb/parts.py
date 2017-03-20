@@ -28,14 +28,14 @@ class Resistor(PcbComponent):
         mod = 'R_Axial_DIN0204_L3.6mm_D1.6mm_P7.62mm_Horizontal'
 
         # TODO: query DigiKey for parts
-        partnos = { 330: 'BC3292CT-ND',
-                    1e3: 'BC3238CT-ND',
+        partnos = {330: 'BC3292CT-ND',
+                   1e3: 'BC3238CT-ND',
                    10e3: 'BC3239CT-ND'}
         if value in partnos:
             partno = partnos[value]
         else:
             raise Exception('Resistor value not supported.')
-        
+
         super(Resistor, self).__init__(lib, mod, partno, **kwargs)
 
         self.prefix = 'R'
@@ -56,9 +56,9 @@ class Capacitor(PcbComponent):
             mod = 'CP_Radial_D6.3mm_P2.50mm'
 
         # TODO: query DigiKey for parts
-        partnos = { 22e-12: 'BC1005CT-ND',
-                    100e-9: 'BC1084CT-ND',
-                     47e-6: '1189-2912-ND'}
+        partnos = {22e-12: 'BC1005CT-ND',
+                   100e-9: 'BC1084CT-ND',
+                   47e-6: '1189-2912-ND'}
         if value in partnos:
             partno = partnos[value]
         else:
@@ -76,7 +76,6 @@ class LDO_5v0(PcbComponent):
     def __init__(self, vin, gnd, vout, **kwargs):
         lib = 'TO_SOT_Packages_THT'
         mod = 'TO-220_Horizontal'
-        partno = '497-1443-5-ND'
 
         super(LDO_5v0, self).__init__(lib, mod, **kwargs)
 
@@ -213,19 +212,18 @@ class Header(PcbComponent):
         lib = 'Pin_Headers'
         mod = 'Pin_Header_Straight_' + config + '_Pitch' + pitch
 
-        
         # TODO: query DigiKey for parts
 
         # determine part number table based on header type
         if kwargs['type'].lower() in ['m', 'male']:
-            partnos = { '1x03': '732-5316-ND' }
+            partnos = {'1x03': '732-5316-ND'}
         elif kwargs['type'].lower() in ['f', 'female']:
-            partnos = { '1x06': 'S7004-ND',
-                        '1x08': 'S7006-ND',
-                        '1x10': 'S7008-ND'}
+            partnos = {'1x06': 'S7004-ND',
+                       '1x08': 'S7006-ND',
+                       '1x10': 'S7008-ND'}
         else:
             raise Exception('Header type not supported.')
-        
+
         # look up part number
         if config in partnos:
             partno = partnos[config]

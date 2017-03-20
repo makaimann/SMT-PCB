@@ -9,16 +9,12 @@
 # Based on kicad-source-mirror/demos/python_scripts_examples/
 
 # general imports
-import json
 import argparse
 import pcbnew
 import os
 import os.path
 
 # project imports
-from kicad.pcbnew.board import Board
-from kicad.point import Point
-from board_tools import BoardTools
 
 
 def main():
@@ -34,7 +30,7 @@ def main():
     # get plot options
     pctl = pcbnew.PLOT_CONTROLLER(board)
     popt = pctl.GetPlotOptions()
-    
+
     # set up output directory
     plotDir = args.plot + '/'
     popt.SetOutputDirectory(plotDir)
@@ -43,7 +39,7 @@ def main():
     # http://docs.oshpark.com/design-tools/kicad/generating-kicad-gerbers/
 
     # Options
-    popt.SetPlotFrameRef(False) 
+    popt.SetPlotFrameRef(False)
     popt.SetPlotPadsOnSilkLayer(False)
     popt.SetPlotValue(True)
     popt.SetPlotReference(True)
@@ -59,7 +55,7 @@ def main():
     popt.SetScale(1)
     # TODO: Plot mode = filled
     popt.SetLineWidth(pcbnew.FromMM(0.1))
-    
+
     # Gerber options
     popt.SetUseGerberProtelExtensions(True)
     popt.SetUseGerberAttributes(False)
@@ -71,24 +67,24 @@ def main():
         ("CuTop", pcbnew.F_Cu, "Top layer"),
         ("CuBottom", pcbnew.B_Cu, "Bottom layer"),
         ("EdgeCuts", pcbnew.Edge_Cuts, "Edges")]
-    
+
     # Plot the layers
     for layer_info in plot_plan:
         pctl.SetLayer(layer_info[1])
-        pctl.OpenPlotfile(layer_info[0], 
-                          pcbnew.PLOT_FORMAT_GERBER, 
+        pctl.OpenPlotfile(layer_info[0],
+                          pcbnew.PLOT_FORMAT_GERBER,
                           layer_info[2])
         fullname = pctl.GetPlotFileName()
         basename = os.path.basename(fullname)
         print 'Plotting %s' % basename
-        if pctl.PlotLayer() == False:
+        if not pctl.PlotLayer():
             raise Exception('Plotting error.')
-    
+
     # Done with plotting gerbers
     pctl.ClosePlot()
 
     drlwriter = pcbnew.EXCELLON_WRITER(board)
-    
+
     # Set Excellon format according to:
     # http://docs.oshpark.com/design-tools/kicad/generating-kicad-gerbers/
 
@@ -96,7 +92,7 @@ def main():
     metricFmt = False
     zerosFmt = pcbnew.EXCELLON_WRITER.DECIMAL_FORMAT
     drlwriter.SetFormat(metricFmt, zerosFmt)
-    
+
     # Drill map format
     drlwriter.SetMapFileFormat(pcbnew.PLOT_FORMAT_POST)
 
@@ -104,14 +100,15 @@ def main():
     mirror = False
     minimalHeader = False
     mergeNPTH = True
-    offset = pcbnew.wxPoint(0,0)
+    offset = pcbnew.wxPoint(0, 0)
     drlwriter.SetOptions(mirror, minimalHeader, offset, mergeNPTH)
 
     genDrl = True
     genMap = False
-    plotdir = pctl.GetPlotDirName()
+    pctl.GetPlotDirName()
     print 'Creating drill file.'
     drlwriter.CreateDrillandMapFilesSet(plotDir, genDrl, genMap)
+
 
 if __name__ == '__main__':
     main()

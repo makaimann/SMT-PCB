@@ -259,7 +259,7 @@ class Freeduino:
                 'AREF',
                 'AD4',
                 'AD5',
-                type = 'female',
+                type='female',
                 position=header_pos,
                 rotation=header_rot,
                 mode='PIN1'))
@@ -277,7 +277,7 @@ class Freeduino:
                 'IO5',
                 'IO6',
                 'IO7',
-                type = 'female',
+                type='female',
                 position=header_pos,
                 rotation=header_rot,
                 mode='PIN1'))
@@ -293,7 +293,7 @@ class Freeduino:
                 'AD3',
                 'AD4',
                 'AD5',
-                type = 'female',
+                type='female',
                 position=header_pos,
                 rotation=header_rot,
                 mode='PIN1'))
@@ -311,7 +311,7 @@ class Freeduino:
                 'GND',
                 'GND',
                 'VIN',
-                type = 'female',
+                type='female',
                 position=header_pos,
                 rotation=header_rot,
                 mode='PIN1'))

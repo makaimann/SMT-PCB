@@ -248,7 +248,7 @@ class PcbDesign(object):
             # add buffer information
             module_dict[item.name]['bufx'] = item.bufx
             module_dict[item.name]['bufy'] = item.bufy
-            
+
             # add ordering information
             module_dict[item.name]['partno'] = item.partno
 

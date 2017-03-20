@@ -1,5 +1,5 @@
 lint_code:
-	-flake8 --max-complexity 6 --ignore=F405,F403,N801,N802
+	-flake8 --max-complexity 6 --ignore=F405,F403,N801,N802,N806
 	-pep8 *.py
 
 tidy_code:

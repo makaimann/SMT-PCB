@@ -10,7 +10,6 @@
 # general imports
 import json
 import argparse
-import pcbnew
 
 # project imports
 from kicad.pcbnew.board import Board
@@ -70,7 +69,7 @@ def main():
 
     # write changes to board
     pcb = Board.load(args.pcb)
-    
+
     # write edge
     pcb.clearLayer('Edge.Cuts')
     pcb.add_polyline(edge, layer='Edge.Cuts')

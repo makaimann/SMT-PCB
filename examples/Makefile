@@ -1,9 +1,11 @@
 PROJECT = freeduino
-# PROJECT = simple
+#PROJECT = simple
 
 SMT_PCB_DIR = ../smt-pcb
 FREE_ROUTE_DIR = $(HOME)/NetBeansProjects/FreeRouter/dist
 PLOT_NAME = plot
+
+all: clean place route fab
 
 place: first second third
 
@@ -20,8 +22,9 @@ view:
 	pcbnew $(PROJECT).kicad_pcb &
 
 route:
-	cd $(FREE_ROUTE_DIR); \
-	java -jar "FreeRouter.jar"
+	./$(SMT_PCB_DIR)/export_specctra.py --pcb $(PROJECT).kicad_pcb
+	./$(SMT_PCB_DIR)/run_freerouting.py --pcb $(PROJECT).kicad_pcb --route_dir $(FREE_ROUTE_DIR)
+	./$(SMT_PCB_DIR)/import_specctra.py --pcb $(PROJECT).kicad_pcb
 
 fab: edge gerbers bom
 
@@ -38,7 +41,7 @@ bom:
 	./$(SMT_PCB_DIR)/digikey_bom.py --json $(PROJECT).json --bom $(PROJECT).csv
 
 lint_code:
-	-flake8 --max-complexity 6 --ignore=F405,F403,N801,N802
+	-flake8 --max-complexity 6 --ignore=F405,F403,N801,N802,N806
 	-pep8 *.py
 
 tidy_code:

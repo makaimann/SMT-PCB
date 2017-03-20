@@ -10,6 +10,7 @@
 import argparse
 import json
 
+
 def main():
     # load command-line arguments
     parser = argparse.ArgumentParser()
@@ -37,6 +38,7 @@ def main():
     with open(args.bom, 'w') as f:
         for partno, count in bom_dict.items():
             f.write(partno + ', ' + str(count) + '\n')
+
 
 if __name__ == '__main__':
     main()
