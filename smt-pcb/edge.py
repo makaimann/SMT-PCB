@@ -29,7 +29,6 @@ def main():
     args = parser.parse_args()
 
     # read board placement from SMT-PCB
-    print "Reading output from SMT engine."
     with open(args.json, 'r') as f:
         json_dict = json.load(f)
 
@@ -52,6 +51,10 @@ def main():
             py = y + args.bufy
 
         board_edge[idx] = (px, py)
+
+    # write board edge back
+    with open(args.json, 'w') as f:
+        json.dump(json_dict, f, indent=2, sort_keys=True)
 
     # create the new board edge
     edge = [Point(x, y) + board_ul for x, y in board_edge]

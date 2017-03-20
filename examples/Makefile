@@ -4,8 +4,9 @@ PROJECT = freeduino
 SMT_PCB_DIR = ../smt-pcb
 FREE_ROUTE_DIR = $(HOME)/NetBeansProjects/FreeRouter/dist
 PLOT_NAME = plot
+QUANTITY = 2
 
-all: clean place route fab
+all: clean place route fab summary
 
 place: describe_design run_smt_solver kicad_place_parts
 
@@ -21,9 +22,15 @@ kicad_place_parts:
 view:
 	pcbnew $(PROJECT).kicad_pcb &
 
-route:
+route: export_specctra run_freerouting import_specctra
+
+export_specctra:
 	./$(SMT_PCB_DIR)/export_specctra.py --pcb $(PROJECT).kicad_pcb --dsn $(PROJECT).dsn
+
+run_freerouting:
 	./$(SMT_PCB_DIR)/run_freerouting.py --dsn $(PROJECT).dsn --route_dir $(FREE_ROUTE_DIR)
+
+import_specctra:
 	./$(SMT_PCB_DIR)/import_specctra.py --pcb $(PROJECT).kicad_pcb --ses $(PROJECT).ses
 
 fab: edge gerbers bom
@@ -38,7 +45,10 @@ gerbers:
 	zip $(PLOT_NAME).zip $(PLOT_NAME)/*
 
 bom: 
-	./$(SMT_PCB_DIR)/digikey_bom.py --json $(PROJECT).json --bom $(PROJECT).csv
+	./$(SMT_PCB_DIR)/digikey_bom.py --json $(PROJECT).json --bom $(PROJECT).csv --qty $(QUANTITY)
+
+summary: 
+	./$(SMT_PCB_DIR)/summary.py --json $(PROJECT).json --units inches
 
 lint_code:
 	-flake8 --max-complexity 6 --ignore=F405,F403,N801,N802,N806

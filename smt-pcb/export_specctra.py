@@ -1,13 +1,13 @@
 #!/usr/bin/env python2
 
 import pyautogui as gui
-import time
 import subprocess
 import argparse
-import os 
+import os
 import os.path
 
-from gui_tools import waitToClick, loc
+from gui_tools import waitToClick
+
 
 def main():
     # load command-line arguments
@@ -19,7 +19,7 @@ def main():
     gui.PAUSE = 0.75
 
     subprocess.Popen(['pcbnew', args.pcb])
-    
+
     # click on FreeRouting button
     waitToClick('freerouting')
 
@@ -36,9 +36,10 @@ def main():
 
     # Close the FreeRouting dialog
     waitToClick('ok_button')
-    
+
     # Quit program
     gui.hotkey('ctrl', 'q')
+
 
 if __name__ == '__main__':
     main()

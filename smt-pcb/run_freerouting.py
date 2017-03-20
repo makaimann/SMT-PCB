@@ -8,6 +8,7 @@ import os.path
 
 from gui_tools import waitToClick, waitFor, getImagePath
 
+
 def main():
     # load command-line arguments
     parser = argparse.ArgumentParser()
@@ -36,19 +37,19 @@ def main():
     gui.hotkey('enter')
     waitToClick('autorouter')
 
-    # wait until routing finishes 
+    # wait until routing finishes
     waitFor('trace_length')
 
     # click on center of screen
     width, height = gui.size()
-    gui.click(width/2, height/2)
+    gui.click(width / 2, height / 2)
 
     # click on file menu
     waitToClick('file_menu')
 
     # click on export SES
     waitToClick('export_ses')
-    gui.hotkey('enter')
+    waitToClick('yes_button_freeroute')
 
     # close window
     waitToClick('file_menu')
@@ -58,6 +59,7 @@ def main():
     im = getImagePath('freerouter_title_bar')
     title_bar = gui.locateOnScreen(im)
     waitToClick('close_button', region=title_bar)
+
 
 if __name__ == '__main__':
     main()
