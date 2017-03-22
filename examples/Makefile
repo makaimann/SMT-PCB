@@ -45,7 +45,7 @@ gerbers:
 	zip $(PLOT_NAME).zip $(PLOT_NAME)/*
 
 bom: 
-	./$(SMT_PCB_DIR)/digikey_bom.py --json $(PROJECT).json --bom $(PROJECT).csv --qty $(QUANTITY)
+	./$(SMT_PCB_DIR)/octopart_bom.py --json $(PROJECT).json --bom $(PROJECT).csv
 
 summary: 
 	./$(SMT_PCB_DIR)/summary.py --json $(PROJECT).json --units inches

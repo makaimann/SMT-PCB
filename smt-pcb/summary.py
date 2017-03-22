@@ -23,7 +23,6 @@ def main():
     with open(args.json, 'r') as f:
         json_dict = json.load(f)
 
-    qty = json_dict['quantity'] 
     board_edge = json_dict['board_edge'] 
 
     width, height = BoardTools.get_board_dims(board_edge)
@@ -45,7 +44,6 @@ def main():
     print '############'
     print 'Summary'
     print 'Board area: %0.3f %s' %(area, area_str)
-    print 'Quantity:   %d' % qty
     print '############'
 
 if __name__ == '__main__':

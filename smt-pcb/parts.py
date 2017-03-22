@@ -43,8 +43,11 @@ class Resistor(PcbComponent):
             power = math.floor(power+eps)
             mantissa = round(value / 10**(power-2))
             value_str = '%03d%01d' % (mantissa, power-2)
+
+        num = 'MBA02040C' + value_str + 'FCT00'
+        mfg = 'Vishay'
         
-        return 'MBA02040C' + value_str + 'FCT00'
+        return (num, mfg)
 
 
 class Capacitor(PcbComponent):
@@ -74,7 +77,10 @@ class Capacitor(PcbComponent):
         mantissa = round(value / 10**(power-1))
         value_str = '%02d%01d' % (mantissa, power+11)
         
-        return 'K' + value_str + 'J15C0GF5TL2'
+        num = 'K' + value_str + 'J15C0GF5TL2'
+        mfg = 'Vishay'
+
+        return (num, mfg)
 
     def get_partno_medium(self, value):
         power = math.log(value)/math.log(10)
@@ -82,7 +88,10 @@ class Capacitor(PcbComponent):
         mantissa = round(value / 10**(power-1))
         value_str = '%02d%01d' % (mantissa, power+11)
 
-        return 'K' + value_str + 'K15X7RF5TL2'
+        num = 'K' + value_str + 'K15X7RF5TL2'
+        mfg = 'Vishay'
+    
+        return (num, mfg)
 
     def get_partno_large(self, value):
         power = math.log(value)/math.log(10)
@@ -90,13 +99,16 @@ class Capacitor(PcbComponent):
         mantissa = round(value / 10**(power-1))
         value_str = '%02d%01d' % (mantissa, power+5)
 
-        return 'ECE-A1EKA' + value_str
+        num = 'ECE-A1EKA' + value_str
+        mfg = 'Panasonic'
+
+        return (num, mfg)
 
 class LDO_5v0(PcbComponent):
     def __init__(self, vin, gnd, vout, **kwargs):
         lib = 'TO_SOT_Packages_THT'
         mod = 'TO-220_Horizontal'
-        partno = 'L7805CV'
+        partno = ('L7805CV', 'STMicroelectronics')
 
         super(LDO_5v0, self).__init__(lib, mod, partno, **kwargs)
 
@@ -112,7 +124,7 @@ class BarrelJack(PcbComponent):
     def __init__(self, vdd, gnd, **kwargs):
         lib = 'Connectors'
         mod = 'BARREL_JACK'
-        partno = 'PJ-102AH'
+        partno = ('PJ-102AH', 'CUI')
 
         super(BarrelJack, self).__init__(lib, mod, partno, **kwargs)
         self.prefix = 'X'
@@ -126,7 +138,7 @@ class SPST(PcbComponent):
     def __init__(self, p, n, **kwargs):
         lib = 'Buttons_Switches_SMD'
         mod = 'SW_SPST_EVQP0'
-        partno = 'EVQ-P0P02B'
+        partno = ('EVQ-P0P02B', 'Panasonic')
 
         super(SPST, self).__init__(lib, mod, partno, **kwargs)
         self.prefix = 'SW'
@@ -158,14 +170,17 @@ class LED(PcbComponent):
         else:
             raise Exception('LED color not supported.')
 
-        return 'LTL2R3K' + value_str + 'D-EM'
+        num = 'LTL2R3K' + value_str + 'D-EM'
+        mfg = 'Lite-On'
+
+        return (num, mfg)
 
 
 class Diode(PcbComponent):
     def __init__(self, p, n, **kwargs):
         lib = 'Diodes_THT'
         mod = 'D_DO-41_SOD81_P7.62mm_Horizontal'
-        partno = '1N4001-TP'
+        partno = ('1N4001-TP', 'Micro')
 
         super(Diode, self).__init__(lib, mod, partno, **kwargs)
         self.prefix = 'D'
@@ -178,7 +193,7 @@ class Crystal(PcbComponent):
     def __init__(self, p, n, **kwargs):
         lib = 'Crystals'
         mod = 'Crystal_HC49-U_Vertical'
-        partno = 'ECS-160-20-4X'
+        partno = ('ECS-160-20-4X', 'ECS')
 
         super(Crystal, self).__init__(lib, mod, partno, **kwargs)
 
@@ -192,7 +207,7 @@ class PTC(PcbComponent):
         # define component footprint
         lib = 'Resistors_SMD'
         mod = 'R_1812_HandSoldering'
-        partno = 'MF-MSMF050-2'
+        partno = ('MF-MSMF050-2', 'Bourns')
 
         super(PTC, self).__init__(lib, mod, partno, **kwargs)
 
@@ -206,7 +221,7 @@ class ICSP(PcbComponent):
         # define component footprint
         lib = 'Pin_Headers'
         mod = 'Pin_Header_Straight_2x03_Pitch2.54mm'
-        partno = '67996-406HLF'
+        partno = ('67996-406HLF', 'Amphenol')
 
         super(ICSP, self).__init__(lib, mod, partno, **kwargs)
         self.prefix = 'ICSP'
@@ -253,13 +268,21 @@ class Header(PcbComponent):
         if type.lower() in ['m', 'male']:
             if rows == 1:
                 value_str = '%02d' % cols
-                return '6130' + value_str + '11121'
+
+                num = '6130' + value_str + '11121'
+                mfg = 'Wurth'
+
+                return (num, mfg)
             else:
                 raise Exception('Unsupported number of header rows.')
         elif type.lower() in ['f', 'female']:
             number_pos = rows*cols
             value_str = '%02d%01d' % (number_pos, rows)
-            return 'PPTC' + value_str + 'LFBN-RC'
+    
+            num = 'PPTC' + value_str + 'LFBN-RC'
+            mfg = 'Sullins'
+
+            return (num, mfg)
         else:
             raise Exception('Unsupported header type.')
 
@@ -267,7 +290,7 @@ class UsbConnB(PcbComponent):
     def __init__(self, vdd, dm, dp, gnd, shield, **kwargs):
         lib = 'Connectors'
         mod = 'USB_B'
-        partno = 'USB-B1HSW6'
+        partno = ('USB-B1HSW6', 'On Shore')
 
         super(UsbConnB, self).__init__(lib, mod, partno, **kwargs)
 
@@ -299,7 +322,7 @@ class FTDI232(PcbComponent):
 
         lib = 'Housings_SSOP'
         mod = 'SSOP-28_5.3x10.2mm_Pitch0.65mm'
-        partno = 'FT232RL-REEL'
+        partno = ('FT232RL-REEL', 'FTDI')
 
         super(FTDI232, self).__init__(lib, mod, partno, **kwargs)
 
@@ -359,7 +382,8 @@ class ATMEGA328P(PcbComponent):
 
         lib = 'Housings_DIP'
         mod = 'DIP-28_W7.62mm_Socket'
-        partno = ['ED281DT', 'Arduino A000048']
+        partno = [('ED281DT', 'On Shore'),
+                  ('A000048', 'Arduino')]
         super(ATMEGA328P, self).__init__(lib, mod, partno, **kwargs)
 
         self.init_mapping()
