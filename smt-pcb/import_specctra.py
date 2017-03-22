@@ -36,7 +36,7 @@ def main():
     gui.hotkey('enter')
 
     # rebuild connectivity
-    waitToClick('yes_button')
+    waitToClick('yes_button', timeout=3.0)
 
     # click OK button
     waitToClick('ok_button')

@@ -359,7 +359,7 @@ class ATMEGA328P(PcbComponent):
 
         lib = 'Housings_DIP'
         mod = 'DIP-28_W7.62mm_Socket'
-        partno = ['ED281DT', 'A000048']
+        partno = ['ED281DT', 'Arduino A000048']
         super(ATMEGA328P, self).__init__(lib, mod, partno, **kwargs)
 
         self.init_mapping()

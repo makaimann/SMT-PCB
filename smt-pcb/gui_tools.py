@@ -10,9 +10,15 @@ def getImagePath(name):
     return im
 
 
-def waitToClick(name, delay=0.5, region=None):
+def waitToClick(name, delay=0.5, timeout=None, region=None):
+    print 'Waiting to click: ', name
+
+    if timeout is None:
+        timeout = float('inf')
+    start = time.time()
+
     wait = True
-    while wait:
+    while wait and (time.time()-start) < timeout:
         try:
             click(name, region)
             wait = False
@@ -20,9 +26,15 @@ def waitToClick(name, delay=0.5, region=None):
             time.sleep(delay)
 
 
-def waitFor(name, delay=0.5, region=None):
+def waitFor(name, delay=0.5, timeout=None, region=None):
+    print 'Waiting for:', name
+
+    if timeout is None:
+        timeout = float('inf')
+    start = time.time()
+
     res = loc(name, region)
-    while not res:
+    while not res and (time.time() - start) < timeout:
         time.sleep(0.5)
         res = loc(name, region)
 
