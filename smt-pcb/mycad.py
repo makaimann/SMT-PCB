@@ -46,6 +46,9 @@ class PcbDesign(object):
         self.company = None
         self.date = date.today()
 
+        # Nets to be ignored when automatically generating constraints
+        self.ignore_nets = ['GND', 'UGND', '+5V', '+3V3']
+
     def __contains__(self, item):
         return item in self.comp_dict
 
@@ -288,16 +291,21 @@ class PcbDesign(object):
 
         return constr_mods
 
-    def get_conn_pair(self, name, mod_set):
-        orig = self[name]
-        for pad in orig:
-            for mod in mod_set:
-                if pad.net_name in ['GND', 'UGND', '+5V', '+3V3']:
-                    continue
-                res = self[mod].get_pad_on_net(pad.net_name)
-                if res:
-                    return pad, res
-        return None
+    def get_conn_pads(self, pad):
+        # skip certain nets that don't make for good constraints
+        if pad.net_name in self.ignore_nets:
+            return []
+
+        # look for other pads that are connected to this one
+        conn_pads = []
+        for other_mod in self:
+            if other_mod.name == pad.parent.name:
+                continue
+            for other_pad in other_mod:
+                if other_pad.net_name == pad.net_name:
+                    conn_pads.append(other_pad)
+
+        return conn_pads
 
     def write_json_dict(self, json_file):
         json_dict = {}
@@ -327,37 +335,34 @@ class PcbDesign(object):
 
         # generate sets of components with different kinds of constraints
         all_mods = self.get_all_mods()
-        pinned_mods = self.get_fixed_mods()
-        constr_mods = self.get_constr_mods()
-        unconstr_mods = all_mods - pinned_mods - constr_mods
+        pinned = self.get_fixed_mods()
+        constr = self.get_constr_mods()
+        constr = constr - pinned
+        unconstr = all_mods - pinned - constr
 
         # Print the unconstrained modules
-        print 'Unconstrained modules:', map(str, unconstr_mods)
+        print 'pinned:', map(str, pinned)
+        print 'constr:', map(str, constr)
+        print 'unconstr:', map(str, unconstr)
 
         # Define the search order used to create constraints
-        order = [(pinned_mods, pinned_mods),
-                 (constr_mods, constr_mods),
-                 (unconstr_mods, constr_mods)]
+        visitOrder = [pinned, constr, unconstr]
 
         # try to add a constraint to each part in unconstr
-        while unconstr_mods:
+        for visit in visitOrder:
+            while visit:
+                comp = visit.pop()
+                self.constr_comp(comp, visit, unconstr)
 
-            # preferential search for an unconstrained module
-            for search, replace in order:
-                for mod in unconstr_mods:
-                    res = self.get_conn_pair(mod, search - set([mod]))
-                    if res:
-                        break
-                if res:
-                    break
-
-            if res:
-                self.add_pad_constr(res[0], res[1])
-                replace.add(res[0].parent.name)
-                replace.add(res[1].parent.name)
-
-            unconstr_mods.remove(mod)
-
+    def constr_comp(self, comp, visit, unconstr):
+        for pad1 in self[comp]:
+            connected_pads = self.get_conn_pads(pad1)
+            for pad2 in connected_pads:
+                neighbor = pad2.parent.name
+                if neighbor in unconstr:
+                    visit.add(neighbor)
+                    unconstr.remove(neighbor)
+                    self.add_pad_constr(pad1, pad2)
 
 class PcbPad(object):
     def __init__(self, pad):
