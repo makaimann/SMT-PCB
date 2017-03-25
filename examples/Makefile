@@ -1,5 +1,5 @@
-PROJECT = freeduino
-#PROJECT = simple
+#PROJECT = freeduino
+PROJECT = simple
 
 SMT_PCB_DIR = ../smt-pcb
 FREE_ROUTE_DIR = $(HOME)/NetBeansProjects/FreeRouter/dist

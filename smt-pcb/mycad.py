@@ -10,6 +10,7 @@ import os
 from datetime import date
 import pcbnew
 import json
+import heapq
 
 # project-specific
 from kicad.pcbnew.module import Module
@@ -333,35 +334,37 @@ class PcbDesign(object):
 
     def add_default_constr(self):
 
-        # generate sets of components with different kinds of constraints
-        all_mods = self.get_all_mods()
+        # add parts in priority order
         pinned = self.get_fixed_mods()
         constr = self.get_constr_mods()
-        constr = constr - pinned
-        unconstr = all_mods - pinned - constr
-
+        unconstr = set()
+        ps = PrioritySet()
+        for mod in self:
+            if mod.name in pinned:
+                ps.add(mod.name, PrioritySet.PINNED)
+            elif mod.name in constr:
+                ps.add(mod.name, PrioritySet.CONSTR)
+            else:
+                ps.add(mod.name, PrioritySet.UNCONSTR)
+                unconstr.add(mod.name)
+        
         # Print the unconstrained modules
-        print 'pinned:', map(str, pinned)
-        print 'constr:', map(str, constr)
         print 'unconstr:', map(str, unconstr)
 
-        # Define the search order used to create constraints
-        visitOrder = [pinned, constr, unconstr]
+        while ps.set:
+            comp = ps.get()
+            self.constr_comp(comp, ps, unconstr)
 
-        # try to add a constraint to each part in unconstr
-        for visit in visitOrder:
-            while visit:
-                comp = visit.pop()
-                self.constr_comp(comp, visit, unconstr)
-
-    def constr_comp(self, comp, visit, unconstr):
+    def constr_comp(self, comp, ps, unconstr):
         for pad1 in self[comp]:
             connected_pads = self.get_conn_pads(pad1)
             for pad2 in connected_pads:
                 neighbor = pad2.parent.name
                 if neighbor in unconstr:
-                    visit.add(neighbor)
+                    ps.add(neighbor, PrioritySet.CONSTR)
                     unconstr.remove(neighbor)
+                    if comp in unconstr:
+                        unconstr.remove(comp)
                     self.add_pad_constr(pad1, pad2)
 
 class PcbPad(object):
@@ -585,3 +588,23 @@ class PcbKeepout(object):
 
     def get_fixed_pos(self):
         return self.position
+
+class PrioritySet(object):
+    PINNED = 0
+    CONSTR = 1
+    UNCONSTR = 2
+
+    # reference: http://stackoverflow.com/questions/5997189/how-can-i-make-a-unique-value-priority-queue-in-python
+    def __init__(self):
+        self.heap = []
+        self.set = set()
+
+    def add(self, d, pri):
+        if not d in self.set:
+            heapq.heappush(self.heap, (pri, d))
+            self.set.add(d)
+
+    def get(self):
+        pri, d = heapq.heappop(self.heap)
+        self.set.remove(d)
+        return d
