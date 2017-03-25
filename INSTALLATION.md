@@ -3,6 +3,7 @@
 1. KiCAD
 2. Z3
 3. Requires python2 and python3
+4. FreeRouting (if you would like to route the design)
 
 ### Install KiCAD
 ```
@@ -33,6 +34,18 @@ sudo make install
 alias python=python2
 ```
 
+### FreeRouting Installation
+First, follow the instructions [here](http://brianhoskins.uk/install-freerouting-ubuntu-14-04-15-04/) to install FreeRouting
+
+Note: FreeRouting itself requires java jdk, NetBeans and icedtea-netx-common.
+
+Once you've installed FreeRouting, follow these steps to integrate it into the design flow:
+1. Make sure FreeRouting is running within NetBeans.
+2. Type `cd ~/NetBeansProjects/FreeRouter`
+3. Type `ant jar`
+    * This will build an executable JAR of the FreeRouting project.
+
+
 ## Environment Variables
 Set environment variables:
 ```
@@ -40,3 +53,4 @@ export KISYSMOD="/usr/share/kicad/modules”
 export SMT_PCB="<your path>/SMT-PCB/“
 export PYTHONPATH="$SMT_PCB/smt-core:$SMT_PCB/kicad-python:$SMT_PCB/smt-pcb”
 ```
+
