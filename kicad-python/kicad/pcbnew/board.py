@@ -232,25 +232,26 @@ class Board(object):
             float(b.GetDesignSettings().GetCurrentTrackWidth()) /
             units.DEFAULT_UNIT_IUS)
 
-    def add_track_segment(self, start, end, layer='F.Cu', width=None):
+    def add_track_segment(self, start, end, layer='F.Cu', width=None, net=None):
         """Create a track segment."""
 
         track = Track(width or self.default_width,
                       start, end, layer, board=self)
         self._obj.Add(track.native_obj)
+        track.native_obj.SetNet(self.nets[net]._obj)
         return track
 
     def get_layer(self, name):
         return self._obj.GetLayerID(name)
 
-    def add_track(self, coords, layer='F.Cu', width=None):
+    def add_track(self, coords, layer='F.Cu', width=None, net=None):
         """Create a track polyline.
 
         Create track segments from each coordinate to the next.
         """
         for n in range(len(coords) - 1):
             self.add_track_segment(coords[n], coords[n + 1],
-                                   layer=layer, width=width)
+                                   layer=layer, width=width, net=net)
 
     @property
     def default_via_size(self):
