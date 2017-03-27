@@ -8,8 +8,7 @@
 
 import re
 
-
-class PcbParser(object):
+class LispPrinter(object):
     @staticmethod
     def formatFlat(s):
         s = ' '.join(s)
@@ -23,13 +22,15 @@ class PcbParser(object):
         if isinstance(s, basestring):
             return indent + s + '\n'
         elif all(isinstance(x, basestring) for x in s):
-            return indent + PcbParser.formatFlat(s) + '\n'
+            return indent + LispPrinter.formatFlat(s) + '\n'
         else:
             out = indent + '(' + s[0] + '\n'
             for e in s[1:]:
-                out = out + PcbParser.format(e, level + 1)
+                out = out + LispPrinter.format(e, level + 1)
             out = out + indent + ')\n'
             return out
+    
+class PcbParser(object):
 
     @staticmethod
     def read_pcb_file(infile):
@@ -72,7 +73,7 @@ class PcbParser(object):
 
     @staticmethod
     def write_pcb_file(tree, outfile):
-        formatted = PcbParser.format(tree)
+        formatted = LispPrinter.format(tree)
         open(outfile, 'w').write(formatted)
 
     @staticmethod
@@ -132,6 +133,27 @@ class PcbParser(object):
                     net_id = net_dict[net_name]
                     val.append(['net', str(net_id), net_name])
 
+    @staticmethod
+    def get_mod_list(tree):
+        mod_list = []
+        for entry in tree:
+            if entry[0] == 'module':
+                mod = {}
+                mod['name'] = entry[1]
+                for val in entry[2:]:
+                    if val[0] == 'layer':
+                        mod['layer'] = val[1]
+                    elif val[0] == 'at':
+                        mod['x'] = float(val[1])
+                        mod['y'] = float(val[2])
+                        if len(val) == 3:
+                            mod['rot'] = 0
+                        else:
+                            mod['rot'] = int(val[3])
+                    elif val[0] == 'fp_text' and val[1] == 'reference':
+                        mod['refdes'] = val[2]
+                mod_list = mod_list + [mod]
+        return mod_list
 
 class InPort(object):
     # class used to parse Lisp-like syntax

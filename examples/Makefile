@@ -25,7 +25,7 @@ view:
 route: export_specctra run_freerouting import_specctra
 
 export_specctra:
-	./$(SMT_PCB_DIR)/export_specctra.py --pcb $(PROJECT).kicad_pcb --dsn $(PROJECT).dsn
+	./$(SMT_PCB_DIR)/export_specctra.py --pcb $(PROJECT).kicad_pcb --dsn $(PROJECT).dsn --json $(PROJECT).json
 
 run_freerouting:
 	./$(SMT_PCB_DIR)/run_freerouting.py --dsn $(PROJECT).dsn --route_dir $(FREE_ROUTE_DIR)
