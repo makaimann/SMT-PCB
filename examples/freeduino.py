@@ -23,19 +23,22 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--json')
     parser.add_argument('--pcb')
+    parser.add_argument('--fast', action='store_true')
+    parser.add_argument('--dx', type=float, default=0.1)
+    parser.add_argument('--dy', type=float, default=0.1)
     args = parser.parse_args()
 
     # build Freeduino design
-    uno = Freeduino(args.json, args.pcb)
+    uno = Freeduino(args)
     uno.compile()
 
 
 class Freeduino:
 
-    def __init__(self, json_fname, pcb_fname):
+    def __init__(self, args):
         # Files used for I/O
-        self.json_fname = json_fname
-        self.pcb_fname = pcb_fname
+        self.json_fname = args.json
+        self.pcb_fname = args.pcb
 
         # Convenience variable, stores the top of the board in mils
         # using the coordinate system of the mechanical drawing
@@ -43,8 +46,13 @@ class Freeduino:
         self.top = 2100
 
         # Create PCB
-#        self.pcb = PcbDesign(pcb_fname, dx=0.1, dy=0.1, def_route_constr=5.0, use_def_constr=True)
-        self.pcb = PcbDesign(pcb_fname, dx=0.1, dy=0.1, def_route_constr=10.0, use_def_constr=False)
+        if args.fast:
+            self.pcb = PcbDesign(self.pcb_fname, dx=args.dx, dy=args.dy, 
+                                 def_route_constr=10.0, use_def_constr=False)
+        else:
+            self.pcb = PcbDesign(self.pcb_fname, dx=args.dx, dy=args.dy, 
+                                 def_route_constr=5.0, use_def_constr=True)
+
         self.pcb.title = 'SMT-PCB Freeduino'
         self.pcb.comments = ['Authors:',
                              'Steven Herbst <sherbst@stanford.edu>',
