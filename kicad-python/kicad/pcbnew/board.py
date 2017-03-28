@@ -267,7 +267,7 @@ class Board(object):
             return 0.2
 
     def add_via(self, coord, layer_pair=('B.Cu', 'F.Cu'), size=None,
-                drill=None):
+                drill=None, net=None):
         """Create a via on the board.
 
         :param coord: Position of the via.
@@ -277,9 +277,18 @@ class Board(object):
         :param drill: size of drill in mm, or None for current selection.
         :returns: the created Via
         """
-        return self.add(
-            Via(coord, layer_pair, size or self.default_via_size,
-                drill or self.default_via_drill, board=self))
+        if size is None:
+            size = self.default_via_size
+        if drill is None:
+            drill = self.default_via_drill
+
+        via = Via(coord, diameter=size, drill=drill, board=self, layer_pair=layer_pair)
+        self.add(via)
+
+        if net is not None:
+            via._obj.SetNet(self.nets[net]._obj)
+
+        return via
 
     def add_line(self, start, end, layer='F.SilkS', width=0.15):
         """Create a graphic line on the board"""

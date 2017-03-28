@@ -18,7 +18,7 @@ class LispPrinter(object):
     def format(s, level=0):
         # set the indent level for readability
         indent = ' ' * level
-
+        
         if isinstance(s, basestring):
             return indent + s + '\n'
         elif all(isinstance(x, basestring) for x in s):

@@ -23,7 +23,6 @@ def main():
     jar_cmd = ['java', '-jar', 'FreeRouter.jar', 
                '-de', args.dsn,
                '-di', os.path.dirname(args.dsn)]
-    print jar_cmd
     proc = subprocess.Popen(jar_cmd, cwd=args.route_dir)
     proc.wait()
 

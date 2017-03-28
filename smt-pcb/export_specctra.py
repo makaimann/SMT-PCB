@@ -7,6 +7,7 @@ import os.path
 import time
 import json
 import re
+import math
 from collections import defaultdict
 
 from pcbparser import LispPrinter, PcbParser
@@ -27,6 +28,7 @@ def main():
         json_dict = json.load(f)
     edge = json_dict['board_edge']
     design = json_dict['design_dict']
+    net_classes = json_dict['net_class_list']
 
     # read PCB file
     tree = PcbParser.read_pcb_file(args.pcb)
@@ -41,7 +43,7 @@ def main():
     dsn.append(structure(edge))
     dsn.append(placement(mod_list))
     dsn.append(library(tree))
-    dsn.append(network(design))
+    dsn.append(network(design, net_classes))
     dsn.append(wiring())
 
     # write to DSN
@@ -168,7 +170,7 @@ def library(tree):
 
     return info
 
-def network(design):
+def network(design, net_classes):
     network = ['network']
 
     # create dictionary mapping nets to lists of pins
@@ -184,15 +186,75 @@ def network(design):
         entry = ['net', dsns(net), pins]
         network.append(entry)
 
-    # add default routing rules
-    all_nets = [dsns(x) for x in net_dict.keys()]
-    rclass = ['kicad_default', '""'] + all_nets
-    rclass.append(['circuit', ['use_via', 'Via[0-1]_800:400_um']])
-    rclass.append(['rule', ['width', '250'], ['clearance', '200.1']])
-    
-    network.append(rclass)
+    # add routing rules
+    all_nets = set(net_dict.keys())
+    classes = make_net_classes(all_nets, net_classes)
+    network = network + classes
 
     return network
+
+def make_net_classes(all_nets, net_classes):
+    # Add nets to net classes as designated by the designer
+    all_net_classes = []
+    classy_nets = set()
+    for net_class in net_classes:
+        fr_net_class, net_set = make_net_class(net_class)
+        all_net_classes.append(fr_net_class)
+
+        # add the nets of this class to a running set of all nets
+        # that are attached to net classes
+        classy_nets = classy_nets | net_set
+        
+    # Add the rest of the nets to a default net class
+    rest = all_nets - classy_nets
+    rest = [dsns(x) for x in rest]
+    rest.append('""')
+
+    # TODO: read default net class information from kicad_pcb
+    dia = 0.8
+    drill = 0.4
+    width = 0.25
+    clearance = 0.2
+    via = make_pad_name('via', '0-1', (scale(dia), scale(drill)))
+    default = net_class_cmd('kicad_default', rest, via, width, clearance)
+    all_net_classes.append(default)
+
+    return all_net_classes
+
+def make_net_class(net_class):
+    net_set = set()
+    name = net_class[1]
+    for entry in net_class[3:]:
+        if entry[0] == 'clearance':
+            clearance = float(entry[1])
+        elif entry[0] == 'trace_width':
+            width = float(entry[1])
+        elif entry[0] == 'via_dia':
+            dia = float(entry[1])
+        elif entry[0] == 'via_drill':
+            drill = float(entry[1])
+        elif entry[0] == 'add_net':
+            net_set.add(entry[1]) 
+
+    nets = [dsns(x) for x in net_set]
+    via = make_pad_name('via', '0-1', (scale(dia), scale(drill)))
+    cmd = net_class_cmd(name, nets, via, width, clearance)
+
+    return cmd, net_set
+
+def net_class_cmd(name, nets, via, width, clearance, buf=10e-3):
+    # format width and clearance
+    # an extra amount is added to the clearance to ensure
+    # routing rules are met after taking into account rounding
+    width = str(scale(width))
+    clearance = str(scale(clearance+buf))
+
+    # generate net class command
+    cmd = ['class', name] + nets
+    cmd.append(['circuit', ['use_via', via]])
+    cmd.append(['rule', ['width', width], ['clearance', clearance]])
+
+    return cmd
 
 def wiring():
     return ['wiring']
@@ -204,43 +266,83 @@ def make_comp(entry):
     pad_set = set()
     for val in entry[2:]:
         if val[0] == 'fp_line':
-            for arg in val:
-                if arg[0] == 'start':
-                    startx = '%d' % dsnx(arg[1])
-                    starty = '%d' % dsny(arg[2])
-                elif arg[0] == 'end':
-                    endx = '%d' % dsnx(arg[1])
-                    endy = '%d' % dsny(arg[2])
-                elif arg[0] == 'width':
-                    width = '%d' % scale(arg[1])
-            line = ['outline', ['path', 'signal', width, startx, starty, endx, endy]]
-            outline = outline + [line]
+            outline.append(fp_line_to_path(val))
+        elif val[0] == 'fp_circle':
+            outline.append(fp_circle_to_path(val))
         elif val[0] == 'pad':
-            pad_name = val[1]
-            pad_type = val[3]
-            for arg in val:
-                if arg[0] == 'size':
-                    pad_size = (scale(arg[1]), scale(arg[2]))
-                elif arg[0] == 'at':
-                    x = '%d' % dsnx(arg[1])
-                    y = '%d' % dsny(arg[2])
-                elif arg[0] == 'layers':
-                    layers = arg[1:]
-                    if '*.Cu' in layers:
-                        pad_layer = 'A'
-                    elif 'F.Cu' in layers:
-                        pad_layer = 'T'
-                    elif 'B.Cu' in layers:
-                        pad_layer = 'B'
-                    else:
-                        raise Exception('Invalid pad layer')
-            fr_pad_name = make_pad_name(pad_type, pad_layer, pad_size)
+            p = get_pad_params(val)
+            fr_pad_name = make_pad_name(p['type'], p['layer'], p['size'])
             pad_set.add(fr_pad_name)
-            pad = ['pin', dsns(fr_pad_name), pad_name, x, y]
+            pad = ['pin', dsns(fr_pad_name), p['name'], p['x'], p['y']]
             pins.append(pad)
-    
+
+    # Libary entry is the composite of its outline and pins
+    # It appears that the ouline is only used to make the graphical
+    # display more readable, so it may be possible to omit it.    
     comp = comp + outline + pins
+
     return comp, pad_set
+
+def fp_line_to_path(val):
+    for arg in val:
+        if arg[0] == 'start':
+            startx = '%d' % dsnx(arg[1])
+            starty = '%d' % dsny(arg[2])
+        elif arg[0] == 'end':
+            endx = '%d' % dsnx(arg[1])
+            endy = '%d' % dsny(arg[2])
+        elif arg[0] == 'width':
+            width = '%d' % scale(arg[1])
+    return ['outline', ['path', 'signal', width, startx, starty, endx, endy]]
+
+def fp_circle_to_path(val, Nseg=20):
+    # read in circle parameters
+    for arg in val:
+        if arg[0] == 'center':
+            cx = float(arg[1])
+            cy = float(arg[2])
+        elif arg[0] == 'end':
+            endx = float(arg[1])
+            endy = float(arg[2])
+        elif arg[0] == 'width':
+            width = str(scale(arg[1]))
+
+    # generate circle
+    radius = math.hypot(cx-endx, cy-endy)
+    segments = []
+    for n in range(Nseg):
+        angle = 2*math.pi*n/float(Nseg)
+        x = cx + radius*math.cos(angle)
+        y = cy + radius*math.sin(angle)
+        segments.append(str(dsnx(x)))
+        segments.append(str(dsny(y)))
+
+    # return full command
+    return ['outline', ['path', 'signal', width] + segments]
+
+def get_pad_params(val):
+    params = {}
+
+    params['name'] = val[1]
+    params['type'] = val[3]
+    for arg in val:
+        if arg[0] == 'size':
+            params['size'] = (scale(arg[1]), scale(arg[2]))
+        elif arg[0] == 'at':
+            params['x'] = '%d' % dsnx(arg[1])
+            params['y'] = '%d' % dsny(arg[2])
+        elif arg[0] == 'layers':
+            layers = arg[1:]
+            if '*.Cu' in layers:
+                params['layer'] = 'A'
+            elif 'F.Cu' in layers:
+                params['layer'] = 'T'
+            elif 'B.Cu' in layers:
+                params['layer'] = 'B'
+            else:
+                raise Exception('Invalid pad layer')
+
+    return params
 
 def make_pad_name(pad_type, pad_layer, pad_size):
     if pad_type == 'oval':
@@ -249,66 +351,86 @@ def make_pad_name(pad_type, pad_layer, pad_size):
         return 'Rect[%s]Pad_%dx%d_um' % (pad_layer, pad_size[0], pad_size[1])
     elif pad_type == 'circle':
         return 'Round[%s]Pad_%d_um' % (pad_layer, pad_size[0])
+    elif pad_type == 'via':
+        return 'Via[%s]_%d:%d_um' % (pad_layer, pad_size[0], pad_size[1])
     else:
         raise Exception('Unsupported pad type.')
 
 def make_pad(name):
-    types = '(Round|Oval|Rect|Via)'
-    layers = '\[([ATB]|0-1)\](Pad)?_'
-    size = '(\\d+x\\d+|\\d+:\\d+|\\d+)'
-    units = '_um'
-    p = re.compile(types + layers + size + units)
+    # Create a template for matching the pad name
+    p = re.compile(r'(?P<type>Round|Oval|Rect|Via)'
+                   r'\[(?P<layers>[ATB]|\d+-\d+)\](Pad)?_'
+                   r'(?P<size>\d+x\d+|\d+:\d+|\d+)_um')
+
+    # Match pad name to template
     m = p.match(name)
     if not m:
-        print p
-        print name
         raise Exception('Invalid pad name.')
+
+    # read out the pad type, size, and layer
+    ptype = m.group('type')
+    players = m.group('layers')
+    psize = m.group('size')
+
+    # Declare new pad with given name
+    pad = ['padstack', dsns(name)]
+
+    # generate images of this pad on the appropriate layers
+    images = []
+    if players in ['T', 'A', '0-1']:
+        images.append(get_pad_on_layer(ptype, 'F.Cu', psize))
+    if players in ['B', 'A', '0-1']:
+        images.append(get_pad_on_layer(ptype, 'B.Cu', psize))
+
+    # add images to pad declaration
+    if not images:
+        raise Exception('Could not determine layer for pad.')
+    pad = pad + images
+    
+    # Last option, unknown what this does
+    pad.append(['attach', 'off'])
+
+    return pad
+
+def get_pad_on_layer(ptype, player, psize):
+    if ptype == 'Round':
+        return ['shape', ['circle', player, psize]]
+    elif ptype == 'Via':
+        dia, drill = psize.split(':')
+        dia = str(int(dia))
+        return ['shape', ['circle', player, dia]]
+    elif ptype == 'Oval':
+        w, h = psize.split('x')
+        w = str(int(w))
+        # TODO: what should be done if w != h?
+        return ['shape', ['path', player,w, '0', '0', '0', '0']]
+    elif ptype == 'Rect':
+        w, h = psize.split('x')
+        w, h = int(w), int(h)
+        corners = [-w/2, -h/2, w/2, h/2]
+        corners = [str(x) for x in corners]
+        return ['shape', ['rect', player] + corners]
     else:
-        pad = ['padstack', dsns(name)]
-        if m.group(1) in ['Round']:
-            size_str = m.group(4)
-            def shape_gen(side):
-                return ['shape', ['circle', side, size_str]]
-        elif m.group(1) in ['Via']:
-            dia, drill = m.group(4).split(':')
-            dia, drill = int(dia), int(drill)
-            size_str = '%d' % dia 
-            def shape_gen(side):
-                return ['shape', ['circle', side, size_str]]
-        elif m.group(1) in ['Oval']:
-            w, h = m.group(4).split('x')
-            w, h = int(w), int(h)
-            size_str = '%d' % w # TODO: are there any cases where w != h?
-            def shape_gen(side):
-                return ['shape', ['path', side, size_str, '0', '0', '0', '0']]
-        elif m.group(1) in ['Rect']:
-            w, h = m.group(4).split('x')
-            w, h = int(w), int(h)
-            llx = '%d' % (-w/2)
-            lly = '%d' % (-h/2)
-            urx = '%d' % (w/2)
-            ury = '%d' % (h/2)
-            def shape_gen(side):
-                return ['shape', ['rect', side, llx, lly, urx, ury]]
-        else:
-            raise Exception('Invalid pad type.')
-        if m.group(2) in ['T', 'A', '0-1']:
-            pad.append(shape_gen('F.Cu'))
-        if m.group(2) in ['B', 'A', '0-1']:
-            pad.append(shape_gen('B.Cu'))
-        pad.append(['attach', 'off'])
-        return pad
+        raise Exception('Invalid pad type.')
 
 def scale(val):
+    # Scales a DSN coordinate to millimeters
+    # DSN file is in micrometers, so the scale factor is 1000
     return int(1000*float(val))
 
 def dsnx(x):
     return scale(x)
 
 def dsny(y):
+    # It appears that FreeRouting uses a upward y axis
+    # while KiCAD uses a downward y axis
     return -scale(y)
 
 def dsns(val):
+    # It appears to be necessary to quote strings containing a hyphen
+    # This function strips quotes from the string, then adds them 
+    # back if there is a hyphen in the string.  In this way, repeated
+    # calls to dsns produce the same result.
     val = val.replace('"', '')
     if '-' in val:
         return '"' + val + '"'
