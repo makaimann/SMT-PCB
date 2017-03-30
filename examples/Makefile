@@ -6,6 +6,8 @@ FREE_ROUTE_DIR = $(HOME)/NetBeansProjects/FreeRouter/dist
 PLOT_NAME = plot
 QUANTITY = 2
 
+PLACE_DATA_FILE = "place_times.txt" #can be used with --dout to record placement times
+
 all: clean place route fab summary
 
 place: describe_design run_smt_solver kicad_place_parts
@@ -14,7 +16,7 @@ describe_design:
 	./$(PROJECT).py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb --dx 0.1 --dy 0.1 --fast
 
 run_smt_solver:
-	./$(SMT_PCB_DIR)/smt_place.py --json $(PROJECT).json 
+	./$(SMT_PCB_DIR)/smt_place.py --json $(PROJECT).json
 
 kicad_place_parts:
 	./$(SMT_PCB_DIR)/kicad_placer.py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb

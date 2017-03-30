@@ -171,11 +171,9 @@ class IntXY(PositionBase):
         return (model.eval(self._vert_var).as_long(), model.eval(self._horiz_var).as_long())
 
 
-class RotIntXY(PositionBase):
+class RotXYBase(PositionBase, metaclass=ABCMeta):
     def __init__(self, name, fabric, width, height):
         super().__init__(name, fabric)
-        self._x = z3.Int(name + '_x')
-        self._y = z3.Int(name + '_y')
         self._width = width
         self._height = height
         self._d0 = z3.Bool(name + '_d0')
@@ -237,12 +235,14 @@ class RotIntXY(PositionBase):
         raise ValueError('flat does not make sense with position.IntXY')
 
     @property
+    @abstractmethod
     def x(self):
-        return self._x
+        pass
 
     @property
+    @abstractmethod
     def y(self):
-        return self._y
+        pass
 
     @property
     def width(self):
@@ -271,9 +271,6 @@ class RotIntXY(PositionBase):
                         self._y >= 0, self._y + self._vert_var <= self.fabric.rows)
         return z3.And(one_rotation, states, on_fab)
 
-    def get_coordinates(self, model):
-        return (model.eval(self.x).as_long(), model.eval(self.y).as_long())
-
     def get_rotation(self, model):
         '''
         Returns rotation relative to input orientation
@@ -292,3 +289,43 @@ class RotIntXY(PositionBase):
             return 3*pi/2
         else:
             raise ValueError('Solver produced invalid rotation!')
+
+
+class RotIntXY(RotXYBase):
+    def __init__(self, name, fabric, width, height):
+        super().__init__(name, fabric, width, height)
+        self._x = z3.Int(name + '_x')
+        self._y = z3.Int(name + '_y')
+
+    @property
+    def x(self):
+        return self._x
+
+    @property
+    def y(self):
+        return self._y
+
+    def get_coordinates(self, model):
+        return (model.eval(self.x).as_long(), model.eval(self.y).as_long())
+
+    
+class RotRealXY(RotXYBase):
+    def __init__(self, name, fabric, width, height):
+        super().__init__(name, fabric, width, height)
+        self._x = z3.Real(name + '_x')
+        self._y = z3.Real(name + '_y')
+
+    @property
+    def x(self):
+        return self._x
+
+    @property
+    def y(self):
+        return self._y
+
+    def get_coordinates(self, model):
+        xref = model.eval(self.x)
+        yref = model.eval(self.y)
+        x = xref.numerator_as_long()/xref.denominator_as_long()
+        y = yref.numerator_as_long()/yref.denominator_as_long()
+        return (x, y)

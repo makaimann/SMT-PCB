@@ -27,6 +27,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--json')
     parser.add_argument('--optimize', action='store_true')
+    parser.add_argument('--dout')
     parser.add_argument('--dx', type=float, default=0.1)
     parser.add_argument('--dy', type=float, default=0.1)
     args = parser.parse_args()
@@ -72,11 +73,18 @@ def place_rects(args):
         for func in d.r_opt_param:
             s.minimize(func)
 
+    with open('freeduino.smt', 'w') as f:
+        f.write(s.to_smt2())
     # run the placement
     start = time.time()
     result = s.check()
     end = time.time()
-    print('Placement took', end - start, 'seconds.')
+    place_time = end - start
+    print('Placement took', place_time, 'seconds.')
+    if args.dout:
+        with open(args.dout, 'a+') as f:
+            f.write(str(place_time) + '\n')
+        
 
     if result == z3.unsat:
         raise Exception('Problem is unsat.')
