@@ -172,6 +172,7 @@ class IntXY(PositionBase):
 
 
 class RotXYBase(PositionBase, metaclass=ABCMeta):
+    @abstractmethod
     def __init__(self, name, fabric, width, height):
         super().__init__(name, fabric)
         self._width = width
