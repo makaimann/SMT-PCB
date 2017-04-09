@@ -63,8 +63,9 @@ Now follow these instructions (credit: [Brian Hoskins](http://brianhoskins.uk/in
 8. Select **Add JAR/Folder** again.  Choose **/usr/share/icedtea-web/netx.jar**
 9. In the **Appication** area, choose *Web Start*.  Make sure the **Enable Web Start** box is NOT checked.
 10.  In the **Categories** area, select *Run* and make sure the Configuration pull down is set to **\<default config\>**.
-11. Select **OK** to exit Project Properties.
-12.  From the NetBeans main menu, choose **Run** and select *Clean and Build Project*.  If all has gone well, it will conclude with **BUILD SUCCESSFUL**.
+11. In **Run** area, click the *Browse* button next to *Main Class* and select **gui.MainApplication**.  Click **Select Main Class**.
+12. Select **OK** to exit Project Properties.
+13.  From the NetBeans main menu, choose **Run** and select *Clean and Build Project*.  If all has gone well, it will conclude with **BUILD SUCCESSFUL**.
 
 Once you've installed FreeRouting, follow these steps to integrate it into the design flow:
 1. Make sure FreeRouting is running within NetBeans.
