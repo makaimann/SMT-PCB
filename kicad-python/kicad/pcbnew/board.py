@@ -324,7 +324,9 @@ class Board(object):
         # Create the outline
         border = area.Outline()
         for point in outline[1:]:
-            border.AppendCorner(point._obj.x, point._obj.y)
+            print dir(border)
+            print type(border)
+            border.append(point._obj)
         border.CloseLastContour()
 
         # Fill in the outline

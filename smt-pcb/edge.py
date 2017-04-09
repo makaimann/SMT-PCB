@@ -78,9 +78,9 @@ def main():
     pcb.add_polyline(edge, layer='Edge.Cuts')
 
     # write zones
-    clearance = max(args.bufx, args.bufy)
-    pcb.add_zone(outline, args.fill_top, 'F.Cu', clearance)
-    pcb.add_zone(outline, args.fill_bot, 'B.Cu', clearance)
+    #clearance = max(args.bufx, args.bufy)
+    #pcb.add_zone(outline, args.fill_top, 'F.Cu', clearance)
+    #pcb.add_zone(outline, args.fill_bot, 'B.Cu', clearance)
 
     pcb.save()
 
