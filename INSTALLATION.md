@@ -79,3 +79,11 @@ export SMT_PCB=path/to/SMT-PCB
 export PYTHONPATH="$SMT_PCB/smt-core:$SMT_PCB/kicad-python:$SMT_PCB/smt-pcb"
 ```
 
+## Testing
+
+As a test of the SMT-PCB installation, you can try building an example board:
+
+```
+cd $SMT_PCB/examples
+make
+```
