@@ -61,7 +61,7 @@ Now follow these instructions (credit: [Brian Hoskins](http://brianhoskins.uk/in
 6. Select File -> Project Properties.
 7. In the **Categories** area, select *Libraries*.  With the compile tab displayed in the area on the right, select *Add JAR/Folder*.  Choose **/usr/share/java/jh.jar**
 8. Select **Add JAR/Folder** again.  Choose **/usr/share/icedtea-web/netx.jar**
-9. In the **Categories** area, make sure the *Web Start* box is NOT checked.
+9. In the **Appication** area, choose *Web Start*.  Make sure the **Enable Web Start** box is NOT checked.
 10.  In the **Categories** area, select *Run* and make sure the Configuration pull down is set to **\<default config\>**.
 11. Select **OK** to exit Project Properties.
 12.  From the NetBeans main menu, choose **Run** and select *Clean and Build Project*.  If all has gone well, it will conclude with **BUILD SUCCESSFUL**.
