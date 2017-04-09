@@ -75,8 +75,6 @@ Once you've installed FreeRouting, follow these steps to integrate it into the d
 ## Environment Variables
 Set environment variables:
 ```
-export KISYSMOD="/usr/share/kicad/modules”
-export SMT_PCB="<your path>/SMT-PCB/“
 export PYTHONPATH="$SMT_PCB/smt-core:$SMT_PCB/kicad-python:$SMT_PCB/smt-pcb”
 ```
 
