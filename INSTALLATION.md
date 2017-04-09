@@ -35,16 +35,26 @@ alias python=python2
 ```
 
 ### FreeRouting Installation
-First, follow the instructions [here](http://brianhoskins.uk/install-freerouting-ubuntu-14-04-15-04/) to install FreeRouting
 
-Note: FreeRouting itself requires java jdk, NetBeans and icedtea-netx-common.
+Install FreeRouting dependencies
+
+```
+sudo apt-get install netbeans javahelp2 icedtea-netx-common
+```
+
+Get the modified FreeRouting source code:
+
+```
+git clone https://github.com/sgherbst/FreeRouting.git
+```
+
+Now follow instructions [here](http://brianhoskins.uk/install-freerouting-ubuntu-14-04-15-04/), starting from the section titled "Loading FreeRouting into NetBeans, Compiling and Running".
 
 Once you've installed FreeRouting, follow these steps to integrate it into the design flow:
 1. Make sure FreeRouting is running within NetBeans.
 2. Type `cd ~/NetBeansProjects/FreeRouter`
 3. Type `ant jar`
     * This will build an executable JAR of the FreeRouting project.
-
 
 ## Environment Variables
 Set environment variables:
