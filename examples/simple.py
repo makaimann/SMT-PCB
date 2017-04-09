@@ -21,22 +21,32 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--json')
     parser.add_argument('--pcb')
+    parser.add_argument('--fast', action='store_true')
+    parser.add_argument('--dx', type=float, default=0.1)
+    parser.add_argument('--dy', type=float, default=0.1)
     args = parser.parse_args()
 
     # build Arduino design
-    simple = Simple(args.json, args.pcb)
+    simple = Simple(args)
     simple.compile()
 
 
 class Simple:
 
-    def __init__(self, json_fname, pcb_fname):
+    def __init__(self, args):
         # Files used for I/O
-        self.json_fname = json_fname
-        self.pcb_fname = pcb_fname
+        self.json_fname = args.json
+        self.pcb_fname = args.pcb
 
         # Create PCB
-        self.pcb = PcbDesign(pcb_fname, dx=0.1, dy=0.1, def_route_constr=0.5)
+        if args.fast:
+            self.pcb = PcbDesign(self.pcb_fname, dx=args.dx, dy=args.dy, 
+                                 def_route_constr=1.0, use_def_constr=False)
+        else:
+            self.pcb = PcbDesign(self.pcb_fname, dx=args.dx, dy=args.dy, 
+                                 def_route_constr=0.5, use_def_constr=True)
+
+        # Create the title block
         self.pcb.title = 'SMT-PCB Simple'
         self.pcb.comments = ['Authors:',
                              'Steven Herbst <sherbst@stanford.edu>',

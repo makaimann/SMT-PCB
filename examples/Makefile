@@ -1,5 +1,5 @@
-PROJECT = freeduino
-#PROJECT = simple
+#PROJECT = freeduino
+PROJECT = simple
 
 SMT_PCB_DIR = ../smt-pcb
 FREE_ROUTE_DIR = $(HOME)/NetBeansProjects/FreeRouter/dist
@@ -13,7 +13,7 @@ all: clean place route fab summary
 place: describe_design run_smt_solver kicad_place_parts
 
 describe_design:
-	./$(PROJECT).py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb --dx 0.1 --dy 0.1 --fast
+	./$(PROJECT).py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb --dx 0.1 --dy 0.1
 
 run_smt_solver:
 	./$(SMT_PCB_DIR)/smt_place.py --json $(PROJECT).json
@@ -62,7 +62,7 @@ tidy_code:
 
 clean:
 	rm -f *.kicad_pcb *.net *.dict *.pro *.pyc *.pcb *.ses *.dsn *.kicad_pcb-bak 
-	rm -f *.log *.json *.rules *.csv *.zip
+	rm -f *.log *.json *.rules *.csv *.zip *.smt
 	rm -rf ./$(PLOT_NAME)/
 
 .PHONY: all explain install clean tidy_code lint_code
