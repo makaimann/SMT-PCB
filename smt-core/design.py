@@ -3,9 +3,16 @@
 '''
 
 from collections import Iterable
-import z3
+import sorts
+import functions
 import traceback
 from classutil import IDObject, NamedIDObject, ValidContainer
+
+# useful functions
+And = functions.And()
+Or = functions.Or()
+Not = functions.Not()
+
 
 class Fabric:
     def __init__(self, place_dims, wire_lengths={1}, W=2, Fc=None, Fs=None, node_masks=None, model = None):
@@ -26,7 +33,7 @@ class Fabric:
             raise ValueError('place_dims must contain a height and a width')
 
         self._dims = (place_dims['height'], place_dims['width'])
-        self._syn_dims = (z3.Int('rows'), z3.Int('cols'))
+        #self._syn_dims = (z3.Int('rows'), z3.Int('cols'))
         self._wire_lengths = set(wire_lengths)
         self._W = W
         self._Fc = Fc
@@ -50,13 +57,13 @@ class Fabric:
     def cols(self):
         return self._dims[1]
 
-    @property
-    def syn_rows(self):
-        return self._syn_dims[0]
+    #@property
+    #def syn_rows(self):
+    #    return self._syn_dims[0]
 
-    @property
-    def syn_cols(self):
-        return self._syn_dims[1]
+    #@property
+    #def syn_cols(self):
+    #    return self._syn_dims[1]
 
     @property
     def wire_lengths(self):
@@ -196,7 +203,7 @@ class Wire(IDObject):
         return '{} -[{}]-> {}'.format(self.src.name, self.width, self.dst.name)
 
 class Design(NamedIDObject):
-    def __init__(self, comp_list, routing_list, fabric, position_type, name='', constraint_generators=(), optimizers=()):
+    def __init__(self, comp_list, routing_list, fabric, position_type, solver, name='', constraint_generators=(), optimizers=()):
         '''
         adj_dict :: {str : [(str, int)]}
         adj_dict[x] := out edges of x with the their width
@@ -219,6 +226,7 @@ class Design(NamedIDObject):
         super().__init__(name)
         self._fabric = fabric
         self._position_type = position_type
+        self._solver = solver
 
         self._comp_list = comp_list #is kinda redundant to keep this around but it might be useful
         self._routing_list = routing_list
@@ -269,9 +277,9 @@ class Design(NamedIDObject):
         self._reset_constraints()
         for c in self.components:
             if c.width and c.height:
-                c.pos = self._position_type(c.name, self.fabric, c.width, c.height)
+                c.pos = self._position_type(c.name, self.fabric, c.width, c.height, self._solver)
             else:
-                c.pos = self._position_type(c.name, self.fabric)
+                c.pos = self._position_type(c.name, self.fabric, self._solver)
             # also find maximum (in or out) degree
             if self._max_degree < c.degree:
                 self._max_degree = c.degree
@@ -303,9 +311,9 @@ class Design(NamedIDObject):
     def constraints(self):
         '''returns all hard constraints'''
         if self._pinned_comps:
-            return z3.And(self.p_constraints, self.g_constraints, self.o_constraints, self.r_constraints, self.pinned_constraints)
+            return self._solver.apply_fun(And, *self.p_constraints, *self.g_constraints, *self.o_constraints, *self.r_constraints, *self.pinned_constraints)
         else:
-            return z3.And(self.p_constraints, self.g_constraints, self.o_constraints, self.r_constraints)
+            return self._solver.apply_fun(And, *self.p_constraints, *self.g_constraints, *self.o_constraints, *self.r_constraints)
 
     @property
     def max_degree(self):
@@ -340,9 +348,9 @@ class Design(NamedIDObject):
             for c in self.components:
                 if not c.is_fixed:
                     cl.append(c.pos.invariants)
-            self._p_constraints.data = z3.And(*cl)
+            self._p_constraints.data = And(*cl)
 
-        return self._p_constraints.data
+        return (self._p_constraints.data,)
 
     def _reset_p_constraints(self):
         self._p_constraints.mark_invalid()
@@ -353,17 +361,21 @@ class Design(NamedIDObject):
             c = []
             for src_name in self._pinned_comps:
                 comp = self._comps[src_name]
-                c.append(comp.pos.x == self._position_type.pos_repr(comp.x))
-                c.append(comp.pos.y == self._position_type.pos_repr(comp.y))
-                c.append(comp.pos.horiz_var == comp.pos.width)
-                c.append(comp.pos.vert_var == comp.pos.height)
-                c.append(z3.And(comp.pos._d0 == True,
-                                comp.pos._d90 == False,
-                                comp.pos._d180 == False,
-                                comp.pos._d270 == False))
-            return z3.And(c)
+                cx = self._solver.theory_const(eval('sorts.{}()'.format(comp.pos.x.sort)), comp.x)
+                cy = self._solver.theory_const(eval('sorts.{}()'.format(comp.pos.y.sort)), comp.y)
+                width = self._solver.theory_const(eval('sorts.{}()'.format(comp.pos.horiz_var.sort)), comp.pos.width)
+                height = self._solver.theory_const(eval('sorts.{}()'.format(comp.pos.vert_var.sort)), comp.pos.height)
+                c.append(comp.pos.x == cx)
+                c.append(comp.pos.y == cy)
+                c.append(comp.pos.horiz_var == width)
+                c.append(comp.pos.vert_var == height)
+                c.append(And(comp.pos._d0,
+                             Not(comp.pos._d90),
+                             Not(comp.pos._d180),
+                             Not(comp.pos._d270)))
+            return (And(c),)
         else:
-            return []    
+            return ()
             
     '''
         -----------------------------------------------------------------------
@@ -387,7 +399,10 @@ class Design(NamedIDObject):
             if not c.valid:
                 c.data = f(self.components, self.wires, self.fabric)
             cl.append(c.data)
-        return z3.And(cl)
+        if cl:
+            return (And(cl),)
+        else:
+            return ()
 
     def _reset_g_constraints(self):
         for _,c in self._cg.values():
@@ -421,7 +436,10 @@ class Design(NamedIDObject):
             if c.data[0]:
                 #check that list nonempty to avoid appending an empty list
                 cl.append(c.data[0])
-        return z3.And(cl)
+        if cl:
+            return (And(cl),)
+        else:
+            return ()
 
     @property
     def opt_parameters(self):
@@ -453,7 +471,10 @@ class Design(NamedIDObject):
             if not c.valid:
                 c.data = f(self._comps, self._routing_list)
             cl.append(c.data)
-        return z3.And(cl)
+        if cl:
+            return (And(cl),)
+        else:
+            return ()
     
     def add_pad_cg(self, k, f):
         '''

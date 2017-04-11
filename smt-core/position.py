@@ -1,12 +1,25 @@
 from abc import ABCMeta, abstractmethod
-from math import log2, ceil, pi
-import z3util as zu
-import z3
+from math import pi
+import solverutil as su
+import sorts
+import functions
+
+# Sorts
+intsort = sorts.Int()
+realsort = sorts.Real()
+boolsort = sorts.Bool()
+
+# functions
+And = functions.And()
+Or = functions.Or()
+Ite = functions.Ite()
+
 
 class PositionBase(metaclass=ABCMeta):
-    def __init__(self, name, fabric):
+    def __init__(self, name, fabric, solver):
         self._name = name
         self._fabric = fabric
+        self._solver = solver
 
     @property
     def name(self):
@@ -15,6 +28,10 @@ class PositionBase(metaclass=ABCMeta):
     @property
     def fabric(self):
         return self._fabric
+
+    @property
+    def solver(self):
+        return self._solver
 
     @property
     @abstractmethod
@@ -33,7 +50,6 @@ class PositionBase(metaclass=ABCMeta):
         x :: -> z3.BitVec
         '''
         pass
-
 
     @property
     @abstractmethod
@@ -73,7 +89,6 @@ class PositionBase(metaclass=ABCMeta):
         '''
         pass
 
-
     @property
     @abstractmethod
     def invariants(self):
@@ -93,14 +108,14 @@ class PositionBase(metaclass=ABCMeta):
 
 
 class IntXY(PositionBase):
-    def __init__(self, name, fabric, width, height):
-        super().__init__(name, fabric)
-        self._x = z3.Int(name + '_x')
-        self._y = z3.Int(name + '_y')
+    def __init__(self, name, fabric, width, height, solver):
+        super().__init__(name, fabric, solver)
+        self._x = self.solver.declare_const(name + '_x', intsort)
+        self._y = self.solver.declare_const(name + '_y', intsort)
         self._width = width
         self._height = height
-        self._horiz_var = z3.Int(name + '_width')
-        self._vert_var = z3.Int(name + '_height')
+        self._horiz_var = self.solver.declare_const(name + '_width', intsort)
+        self._vert_var = self.solver.declare_const(name + '_height', intsort)
 
     @staticmethod
     def pos_repr(n):
@@ -113,16 +128,16 @@ class IntXY(PositionBase):
     def delta_y(self, other):
         return [], self.y - other.y
 
-    #Note: These delta's are NOT absolute value
+    # Note: These delta's are NOT absolute value
     def delta_x_fun(self, other):
         def delta_fun(constant):
-            return z3.And(self.x - other.x < other._horiz_var + constant,
-                          other.x - self.x < self._horiz_var + constant)
+            return And(self.x - other.x < other._horiz_var + constant,
+                       other.x - self.x < self._horiz_var + constant)
         return delta_fun
 
     def delta_y_fun(self, other):
         def delta_fun(constant):
-            return z3.And(self.y - other.y < other._vert_var + constant,
+            return And(self.y - other.y < other._vert_var + constant,
                           other.y - self.y < self._vert_var + constant)
         return delta_fun
 
@@ -156,38 +171,47 @@ class IntXY(PositionBase):
 
     @property
     def invariants(self):
-        return z3.And(self._x >= 0, self._x + self._horiz_var <= self.fabric.cols,
-                      self._y >= 0, self._y + self._vert_var <= self.fabric.rows,
-                      z3.Or(z3.And(self._horiz_var == self._width, self._vert_var == self._height),
-                            z3.And(self._horiz_var == self._height, self._vert_var == self._width)))
+        cols = self.get_theory_const(self.fabric.cols)
+        rows = self.get_theory_const(self.fabric.rows)
+        height = self.get_theory_const(self._height)
+        width = self.get_theory_const(self._width)
+        return And(self._x >= 0, self._x + self._horiz_var <= cols,
+                      self._y >= 0, self._y + self._vert_var <= rows,
+                      Or(And(self._horiz_var == width, self._vert_var == height),
+                         And(self._horiz_var == height, self._vert_var == width)))
 
-    def get_coordinates(self, model):
-        return (model.eval(self.x).as_long(), model.eval(self.y).as_long())
+    def get_coordinates(self):
+        return (int(self.solver.get_value(self.x)), int(self.solver.get_value(self.y)))
 
     def get_vh(self, model):
         ''' Returns a tuple containing the vertical and horizontal variables
              -- these can be negative which represents a rotation
         '''
-        return (model.eval(self._vert_var).as_long(), model.eval(self._horiz_var).as_long())
+        return (int(self.solver.get_value(self.vert_var)), int(self.solver.get_value(self.horiz_var)))
 
 
 class RotXYBase(PositionBase, metaclass=ABCMeta):
     @abstractmethod
-    def __init__(self, name, fabric, width, height):
-        super().__init__(name, fabric)
+    def __init__(self, name, fabric, width, height, solver):
+        super().__init__(name, fabric, solver)
         self._width = width
         self._height = height
-        self._d0 = z3.Bool(name + '_d0')
-        self._d90 = z3.Bool(name + '_d90')
-        self._d180 = z3.Bool(name + '_d180')
-        self._d270 = z3.Bool(name + '_d270')
-        self._horiz_var = z3.Int(name + '_horiz')
-        self._vert_var = z3.Int(name + '_vert')
+        self._d0 = self.solver.declare_const(name + '_d0', boolsort)
+        self._d90 = self.solver.declare_const(name + '_d90', boolsort)
+        self._d180 = self.solver.declare_const(name + '_d180', boolsort)
+        self._d270 = self.solver.declare_const(name + '_d270', boolsort)
+        self._horiz_var = self.solver.declare_const(name + '_horiz', intsort)
+        self._vert_var = self.solver.declare_const(name + '_vert', intsort)
 
     @staticmethod
     def pos_repr(n):
         ''' returns the representation of an x or y coordinate in this encoding'''
         return n
+
+    @abstractmethod
+    def get_theory_const(self, value):
+        ''' returns a theory constant specific to the solver and theory with the given value '''
+        pass
 
     def delta_x(self, other):
         raise NotImplementedError()
@@ -196,24 +220,33 @@ class RotXYBase(PositionBase, metaclass=ABCMeta):
         raise NotImplementedError()
 
     def padx_loc(self, pad1x, pad1y):
-        return z3.If(self._d0, self._x + pad1x,
-                     z3.If(self._d90, self._x + pad1y,
-                           z3.If(self._d180, self._x + self._width - pad1x,
-                                 self._x + self._height - pad1y)))
+        pad1x = self.get_theory_const(pad1x)
+        pad1y = self.get_theory_const(pad1y)
+        height = self.get_theory_const(self._height)
+        width = self.get_theory_const(self._width)
+        return Ite(self._d0, self._x + pad1x,
+                   Ite(self._d90, self._x + pad1y,
+                       Ite(self._d180, self._x + width - pad1x,
+                           self._x + height - pad1y)))
 
     def pady_loc(self, pad1x, pad1y):
-        return z3.If(self._d0, self._y + pad1y,
-                     z3.If(self._d90, self._y + self._width - pad1x,
-                           z3.If(self._d180, self._y + self._height - pad1y,
-                                 self._y + pad1x)))
+        pad1x = self.get_theory_const(pad1x)
+        pad1y = self.get_theory_const(pad1y)
+        height = self.get_theory_const(self._height)
+        width = self.get_theory_const(self._width)
+        return Ite(self._d0, self._y + pad1y,
+                   Ite(self._d90, self._y + width - pad1x,
+                       Ite(self._d180, self._y + height - pad1y,
+                       self._y + pad1x)))
 
     def pad_delta_x(self, pad1x, pad1y, other, pad2x, pad2y):
-        return zu.z3abs(self.padx_loc(pad1x, pad1y) - other.padx_loc(pad2x, pad2y))
+        return su.Abs(self.padx_loc(pad1x, pad1y) - other.padx_loc(pad2x, pad2y))
 
     def pad_delta_y(self, pad1x, pad1y, other, pad2x, pad2y):
-        return zu.z3abs(self.pady_loc(pad1x, pad1y) - other.pady_loc(pad2x, pad2y))
+        return su.Abs(self.pady_loc(pad1x, pad1y) - other.pady_loc(pad2x, pad2y))
 
     def pad_dist_lt(self, pad1x, pad1y, other, pad2x, pad2y, constant):
+        constant = self.get_theory_const(constant)
         return self.pad_delta_x(pad1x, pad1y, other, pad2x, pad2y) \
             + self.pad_delta_y(pad1x, pad1y, other, pad2x, pad2y) \
             <= constant
@@ -221,14 +254,16 @@ class RotXYBase(PositionBase, metaclass=ABCMeta):
     #Note: These delta's are NOT absolute value
     def delta_x_fun(self, other):
         def delta_fun(constant):
-            return z3.And(self.x - other.x < other._horiz_var + constant,
-                          other.x - self.x < self._horiz_var + constant)
+            constant = self.get_theory_const(constant)
+            return And(self.x - other.x < other._horiz_var + constant,
+                       other.x - self.x < self._horiz_var + constant)
         return delta_fun
 
     def delta_y_fun(self, other):
         def delta_fun(constant):
-            return z3.And(self.y - other.y < other._vert_var + constant,
-                          other.y - self.y < self._vert_var + constant)
+            constant = self.get_theory_const(constant)
+            return And(self.y - other.y < other._vert_var + constant,
+                       other.y - self.y < self._vert_var + constant)
         return delta_fun
 
     @property
@@ -263,23 +298,27 @@ class RotXYBase(PositionBase, metaclass=ABCMeta):
 
     @property
     def invariants(self):
-        #TODO: Implement with rotation!
-        one_rotation = zu.exactly_one(self._d0, self._d90, self._d180, self._d270)
-        states = z3.If(z3.Or(self._d0, self._d180),
-                       z3.And(self._horiz_var == self._width, self._vert_var == self._height),
-                      z3.And(self._horiz_var == self._height, self._vert_var == self._width))
-        on_fab = z3.And(self._x >= 0, self._x + self._horiz_var <= self.fabric.cols,
-                        self._y >= 0, self._y + self._vert_var <= self.fabric.rows)
-        return z3.And(one_rotation, states, on_fab)
+        height = self.get_theory_const(self._height)
+        width = self.get_theory_const(self._width)
+        cols = self.get_theory_const(self.fabric.cols)
+        rows = self.get_theory_const(self.fabric.rows)
+        zero = self.get_theory_const(0)
+        one_rotation = su.exactly_one(self._d0, self._d90, self._d180, self._d270)
+        states = Ite(Or(self._d0, self._d180),
+                     And(self._horiz_var == width, self._vert_var == height),
+                     And(self._horiz_var == height, self._vert_var == width))
+        on_fab = And(self._x >= zero, self._x + self._horiz_var <= cols,
+                     self._y >= zero, self._y + self._vert_var <= rows)
+        return And(one_rotation, states, on_fab)
 
-    def get_rotation(self, model):
+    def get_rotation(self):
         '''
         Returns rotation relative to input orientation
         '''
-        d0 =  model.eval(self._d0).sexpr()
-        d90 =  model.eval(self._d90).sexpr()
-        d180 =  model.eval(self._d180).sexpr()
-        d270 =  model.eval(self._d270).sexpr()
+        d0 = self.solver.get_value(self._d0)
+        d90 = self.solver.get_value(self._d90)
+        d180 = self.solver.get_value(self._d180)
+        d270 = self.solver.get_value(self._d270)
         if d0 == 'true':
             return 0
         elif d90 == 'true':
@@ -293,10 +332,10 @@ class RotXYBase(PositionBase, metaclass=ABCMeta):
 
 
 class RotIntXY(RotXYBase):
-    def __init__(self, name, fabric, width, height):
-        super().__init__(name, fabric, width, height)
-        self._x = z3.Int(name + '_x')
-        self._y = z3.Int(name + '_y')
+    def __init__(self, name, fabric, width, height, solver):
+        super().__init__(name, fabric, width, height, solver)
+        self._x = self.solver.declare_const(name + '_x', intsort)
+        self._y = self.solver.declare_const(name + '_y', intsort)
 
     @property
     def x(self):
@@ -305,16 +344,19 @@ class RotIntXY(RotXYBase):
     @property
     def y(self):
         return self._y
-
-    def get_coordinates(self, model):
-        return (model.eval(self.x).as_long(), model.eval(self.y).as_long())
-
     
+    def get_theory_const(self, value):
+        return self.solver.theory_const(intsort, value)
+
+    def get_coordinates(self):
+        return (int(self.solver.get_value(self.x)), int(self.solver.get_value(self.y)))
+
+
 class RotRealXY(RotXYBase):
-    def __init__(self, name, fabric, width, height):
-        super().__init__(name, fabric, width, height)
-        self._x = z3.Real(name + '_x')
-        self._y = z3.Real(name + '_y')
+    def __init__(self, name, fabric, width, height, solver):
+        super().__init__(name, fabric, width, height, solver)
+        self._x = self.solver.declare_const(name + '_x', realsort)
+        self._y = self.solver.declare_const(name + '_y', realsort)
 
     @property
     def x(self):
@@ -324,9 +366,14 @@ class RotRealXY(RotXYBase):
     def y(self):
         return self._y
 
-    def get_coordinates(self, model):
-        xref = model.eval(self.x)
-        yref = model.eval(self.y)
+    def get_theory_const(self, value):
+        return self.solver.theory_const(realsort, value)
+
+    def get_coordinates(self):
+        # currently only support z3
+        model = self.solver.get_model()
+        xref = model.eval(self.x.solver_term)
+        yref = model.eval(self.y.solver_term)
         x = xref.numerator_as_long()/xref.denominator_as_long()
         y = yref.numerator_as_long()/yref.denominator_as_long()
         return (x, y)
