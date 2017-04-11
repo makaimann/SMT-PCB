@@ -16,7 +16,7 @@ describe_design:
 	./$(PROJECT).py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb --dx 0.1 --dy 0.1
 
 run_smt_solver:
-	./$(SMT_PCB_DIR)/smt_place.py --json $(PROJECT).json
+	./$(SMT_PCB_DIR)/smt_place.py --json $(PROJECT).json --solver Z3 --logic Int
 
 kicad_place_parts:
 	./$(SMT_PCB_DIR)/kicad_placer.py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb

@@ -2,9 +2,13 @@
 Constraint and optimizer functions
 '''
 
-import z3
-import z3util as zu
-import math
+import functions
+import solverutil as su
+
+# useful functions
+And = functions.And()
+Or = functions.Or()
+
 
 
 def in_neighborhood(num_hops):
@@ -45,10 +49,10 @@ def in_neighborhood(num_hops):
 
             c = []
             for dx, dy in distances:
-                c.append(z3.And(delta_x(dx), delta_y(dy)))
+                c.append(And(delta_x(dx), delta_y(dy)))
 
-            constraints.append(z3.Or(c))
-        return z3.And(constraints)
+            constraints.append(Or(c))
+        return And(constraints)
     return neighborhood
 
 
@@ -71,17 +75,17 @@ def rect_neighborhood(num_hops):
             
             constraints.append(delta_x(num_hops))
             constraints.append(delta_y(num_hops))
-        return z3.And(constraints)
+        return And(constraints)
     return neighborhood
 
+# not being used currently -- no solver agnostic support for distinct yet
+#def distinct(components, wires, fabric):
+#   return z3.Distinct(*(c.pos.flat for c in components))
 
-def distinct(components, wires, fabric):
-    return z3.Distinct(*(c.pos.flat for c in components))
-
-
-def opt_distinct(components, wires, fabric):
-    ''' Distinct for Optimizer -- because needs to be simplified for z3.Optimize()'''
-    return z3.simplify(z3.Distinct(*(c.pos.flat for c in components)), ':blast-distinct', True)
+# not being used currently
+#def opt_distinct(components, wires, fabric):
+#    ''' Distinct for Optimizer -- because needs to be simplified for z3.Optimize()'''
+#    return z3.simplify(z3.Distinct(*(c.pos.flat for c in components)), ':blast-distinct', True)
 
 def no_overlap(components, wires, fabric):
     comps = list(components)
@@ -89,11 +93,11 @@ def no_overlap(components, wires, fabric):
     for i in range(0, len(comps)):
         for j in range(i+1, len(comps)):
             if not comps[i].is_fixed or not comps[j].is_fixed:
-                c.append(z3.Or(comps[i].pos.x - comps[j].pos.x >= comps[j].pos._horiz_var,
+                c.append(Or(comps[i].pos.x - comps[j].pos.x >= comps[j].pos._horiz_var,
                                comps[j].pos.x - comps[i].pos.x >= comps[i].pos._horiz_var,
                                comps[i].pos.y - comps[j].pos.y >= comps[j].pos._vert_var,
                                comps[j].pos.y - comps[i].pos.y >= comps[i].pos._vert_var))
-    return z3.And(c)
+    return And(c)
 
 
 def pad_max_dists(comps, routing_list):
@@ -111,7 +115,7 @@ def pad_max_dists(comps, routing_list):
         constraints.append(
             comp1.pos.pad_dist_lt(pad1x, pad1y, comp2.pos, pad2x, pad2y, max_length))
 
-    return z3.And(constraints)
+    return And(constraints)
 
 def pad_dists(comps, routing_list):
     dist = 0
@@ -125,8 +129,8 @@ def pad_dists(comps, routing_list):
         max_length = connection['max_length']
         comp1 = comps[comp1name]
         comp2 = comps[comp2name]
-        dist = dist + zu.z3abs(comp1.pos.pad_delta_x(pad1x, pad1y, comp2.pos, pad2x ,pad2y)) + \
-               zu.z3abs(comp1.pos.pad_delta_y(pad1x, pad1y, comp2.pos, pad2x, pad2y))
+        dist = dist + su.Abs(comp1.pos.pad_delta_x(pad1x, pad1y, comp2.pos, pad2x ,pad2y)) + \
+               su.Abs(comp1.pos.pad_delta_y(pad1x, pad1y, comp2.pos, pad2x, pad2y))
 
     return dist
         

@@ -16,6 +16,7 @@ import argparse
 
 # SMT-PCB specific imports
 import z3
+import solvers
 import design
 import position
 import constraints
@@ -30,19 +31,33 @@ def main():
     parser.add_argument('--dout')
     parser.add_argument('--dx', type=float, default=0.1)
     parser.add_argument('--dy', type=float, default=0.1)
+    parser.add_argument('--solver', default='Z3')
+    parser.add_argument('--logic', default='Int')
     args = parser.parse_args()
 
     # determine the placement
-    design, model = place_rects(args)
+    design, solver = place_rects(args)
 
     # write the placement to file
-    write_placement(design, model, args)
+    write_placement(design, solver, args)
 
 
 def place_rects(args):
     # read in SMT input
     with open(args.json, 'r') as f:
         json_dict = json.load(f)
+
+    # create the solver
+    if args.optimize:
+        s = z3.Optimize()
+    else:
+        s = eval('solvers.{}Solver()'.format(args.solver))
+        if args.solver == 'CVC4':
+            s.set_logic('QF_{}DL'.format(args.logic[0]))
+            s.set_option('produce-models', 'true')
+
+    print('Using solver: {}'.format(args.solver))
+    print('With logic: {}'.format(args.logic))
 
     # create the placer grid
     width, height = BoardTools.get_board_dims(json_dict['board_edge'])
@@ -52,47 +67,41 @@ def place_rects(args):
     # Create the design
     comps_list = grid.make_comps_list(json_dict['module_dict'])
     routing_list = grid.make_routing_list(json_dict['routing_list'])
-    d = design.Design(comps_list, routing_list, fab, position.RotIntXY)
+    d = design.Design(comps_list, routing_list, fab, eval('position.Rot{}XY'.format(args.logic)), s)
 
     # Add constraints
     d.add_constraint_generator('no_overlap', constraints.no_overlap)
     d.add_pad_cg('max_dist', constraints.pad_max_dists)
 
-    # create the solver
-    if args.optimize:
-        d.add_pad_opt('min_total_dist', constraints.pad_dists)
-        s = z3.Optimize()
-    else:
-        s = z3.Solver()
-
     # add the constraints to the solver
-    s.add(d.constraints)
+    s.Assert(d.constraints)
 
     # set up the optimization, if desired
     if args.optimize:
+        # d.add_pad_opt('min_total_dist', constraints.pad_dists)
         for func in d.r_opt_param:
             s.minimize(func)
 
-    with open('freeduino.smt', 'w') as f:
-        f.write(s.to_smt2())
+    # not supported by solver agnostic solvers yet
+    #with open('freeduino.smt', 'w') as f:
+    #    f.write(s.to_smt2())
     # run the placement
     start = time.time()
-    result = s.check()
+    result = s.check_sat()
     end = time.time()
     place_time = end - start
     print('Placement took', place_time, 'seconds.')
     if args.dout:
         with open(args.dout, 'a+') as f:
             f.write(str(place_time) + '\n')
-        
 
-    if result == z3.unsat:
+    if not result:
         raise Exception('Problem is unsat.')
 
-    return d, s.model()
+    return d, s
 
 
-def write_placement(design, model, args):
+def write_placement(design, solver, args):
     # read in SMT input
     with open(args.json, 'r') as f:
         json_dict = json.load(f)
@@ -108,12 +117,12 @@ def write_placement(design, model, args):
             continue
 
         # get the x, y position of the component as placed
-        (x, y) = comp.pos.get_coordinates(model)
+        (x, y) = comp.pos.get_coordinates()
         mod['x'] = x * args.dx
         mod['y'] = y * args.dy
 
         # get the rotation
-        mod['rotation'] = comp.pos.get_rotation(model)
+        mod['rotation'] = comp.pos.get_rotation()
 
     with open(args.json, 'w') as f:
         json.dump(json_dict, f, indent=2, sort_keys=True)
