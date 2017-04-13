@@ -311,9 +311,9 @@ class Design(NamedIDObject):
     def constraints(self):
         '''returns all hard constraints'''
         if self._pinned_comps:
-            return self._solver.apply_fun(And, *self.p_constraints, *self.g_constraints, *self.o_constraints, *self.r_constraints, *self.pinned_constraints)
+            return self._solver.apply_fun(And, self.p_constraints, self.g_constraints, self.o_constraints, self.r_constraints, self.pinned_constraints)
         else:
-            return self._solver.apply_fun(And, *self.p_constraints, *self.g_constraints, *self.o_constraints, *self.r_constraints)
+            return self._solver.apply_fun(And, self.p_constraints, self.g_constraints, self.o_constraints, self.r_constraints)
 
     @property
     def max_degree(self):
@@ -350,7 +350,7 @@ class Design(NamedIDObject):
                     cl.append(c.pos.invariants)
             self._p_constraints.data = And(*cl)
 
-        return (self._p_constraints.data,)
+        return self._p_constraints.data
 
     def _reset_p_constraints(self):
         self._p_constraints.mark_invalid()
@@ -373,9 +373,7 @@ class Design(NamedIDObject):
                              Not(comp.pos._d90),
                              Not(comp.pos._d180),
                              Not(comp.pos._d270)))
-            return (And(c),)
-        else:
-            return ()
+            return And(c)
             
     '''
         -----------------------------------------------------------------------
@@ -399,10 +397,7 @@ class Design(NamedIDObject):
             if not c.valid:
                 c.data = f(self.components, self.wires, self.fabric)
             cl.append(c.data)
-        if cl:
-            return (And(cl),)
-        else:
-            return ()
+        return And(cl)
 
     def _reset_g_constraints(self):
         for _,c in self._cg.values():
@@ -436,10 +431,7 @@ class Design(NamedIDObject):
             if c.data[0]:
                 #check that list nonempty to avoid appending an empty list
                 cl.append(c.data[0])
-        if cl:
-            return (And(cl),)
-        else:
-            return ()
+        return And(cl)
 
     @property
     def opt_parameters(self):
@@ -471,10 +463,7 @@ class Design(NamedIDObject):
             if not c.valid:
                 c.data = f(self._comps, self._routing_list)
             cl.append(c.data)
-        if cl:
-            return (And(cl),)
-        else:
-            return ()
+        return And(cl)
     
     def add_pad_cg(self, k, f):
         '''
