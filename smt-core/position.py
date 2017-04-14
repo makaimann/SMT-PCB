@@ -371,11 +371,6 @@ class RotRealXY(RotXYBase):
 
     def get_coordinates(self):
         # currently only support z3
-        # model = self.solver.get_model()
-        # xref = model.eval(self.x.solver_term)
-        # yref = model.eval(self.y.solver_term)
-        # x = xref.numerator_as_long()/xref.denominator_as_long()
-        # y = yref.numerator_as_long()/yref.denominator_as_long()
         x = eval(self.solver.get_value(self.x))
         y = eval(self.solver.get_value(self.y))
         return (x, y)
