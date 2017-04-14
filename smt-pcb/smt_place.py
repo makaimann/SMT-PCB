@@ -53,7 +53,8 @@ def place_rects(args):
     else:
         s = eval('solvers.{}Solver()'.format(args.solver))
         if args.solver == 'CVC4':
-            s.set_logic('QF_{}DL'.format(args.logic[0]))
+            s = solvers.CVC4Solver(lang='auto')
+            s.set_logic('QF_L{}A'.format(args.logic[0]))
             s.set_option('produce-models', 'true')
 
     print('Using solver: {}'.format(args.solver))
@@ -83,7 +84,7 @@ def place_rects(args):
             s.minimize(func)
 
     # not supported by solver agnostic solvers yet
-    #with open('freeduino.smt', 'w') as f:
+    # with open('freeduino.smt', 'w') as f:
     #    f.write(s.to_smt2())
     # run the placement
     start = time.time()

@@ -315,10 +315,10 @@ class RotXYBase(PositionBase, metaclass=ABCMeta):
         '''
         Returns rotation relative to input orientation
         '''
-        d0 = self.solver.get_value(self._d0)
-        d90 = self.solver.get_value(self._d90)
-        d180 = self.solver.get_value(self._d180)
-        d270 = self.solver.get_value(self._d270)
+        d0 = self.solver.get_value(self._d0).lower()
+        d90 = self.solver.get_value(self._d90).lower()
+        d180 = self.solver.get_value(self._d180).lower()
+        d270 = self.solver.get_value(self._d270).lower()
         if d0 == 'true':
             return 0
         elif d90 == 'true':
@@ -344,7 +344,7 @@ class RotIntXY(RotXYBase):
     @property
     def y(self):
         return self._y
-    
+
     def get_theory_const(self, value):
         return self.solver.theory_const(intsort, value)
 
@@ -371,9 +371,11 @@ class RotRealXY(RotXYBase):
 
     def get_coordinates(self):
         # currently only support z3
-        model = self.solver.get_model()
-        xref = model.eval(self.x.solver_term)
-        yref = model.eval(self.y.solver_term)
-        x = xref.numerator_as_long()/xref.denominator_as_long()
-        y = yref.numerator_as_long()/yref.denominator_as_long()
+        # model = self.solver.get_model()
+        # xref = model.eval(self.x.solver_term)
+        # yref = model.eval(self.y.solver_term)
+        # x = xref.numerator_as_long()/xref.denominator_as_long()
+        # y = yref.numerator_as_long()/yref.denominator_as_long()
+        x = eval(self.solver.get_value(self.x))
+        y = eval(self.solver.get_value(self.y))
         return (x, y)
