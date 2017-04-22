@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+
+# Steven Herbst
+# sherbst@stanford.edu
+
+# Library enables user to draw a PCB file from JSON
+
+import pygame
+import json
+import argparse
+import sys
+from math import radians, cos, sin
+from pcbparse import BoundingBox
+
+def getCenter(bbox):
+    cx = (bbox.xmin + bbox.xmax)/2
+    cy = (bbox.ymin + bbox.ymax)/2
+    return cx, cy
+
+def scaleFactor(bbox, w, h, margin=0.2):
+    scaleX = w*(1-margin)/(bbox.xmax-bbox.xmin)
+    scaleY = h*(1-margin)/(bbox.ymax-bbox.ymin)
+    return min(scaleX, scaleY)
+
+def formRect(thing):
+    xmin = thing['xmin']
+    xmax = thing['xmax']
+    ymin = thing['ymin']
+    ymax = thing['ymax']
+    return [(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)]
+
+def roundPoint(point):
+    return (round(point[0]), round(point[1]))
+
+def mult(point, scale):
+    return (scale*point[0], scale*point[1])
+
+def translate(point, x0, y0):
+    return (point[0]+x0, point[1]+y0)
+
+def rotate(point, th):
+    x = cos(th)*point[0] - sin(th)*point[1]
+    y = sin(th)*point[0] + cos(th)*point[1]
+    return (x, y)
+
+def transform(point, th, x0, y0):
+    return translate(rotate(point, th), x0, y0)
+
+def remap(items, bbox, screenWidth, screenHeight):
+    # apply translation
+    x0, y0 = getCenter(bbox)
+    items = [translate(p, -x0, -y0) for p in items]
+
+    # apply scale factor
+    scale = scaleFactor(bbox, screenWidth, screenHeight)
+    items = [mult(p, scale) for p in items]
+    
+    # apply translation
+    items = [translate(p, screenWidth/2, screenHeight/2) for p in items]
+
+    # round points
+    items = [roundPoint(p) for p in items]
+    
+    return items
+
+def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='Draw PCB design.')
+    parser.add_argument('infile')
+    args = parser.parse_args()
+
+    # Parse file
+    with open(args.infile, 'r') as f:
+        json_dict = json.load(f)
+
+    # Add module outlines and pads
+    pads = []
+    rects = []
+    for mod in json_dict['modules']:
+        th = -radians(mod['degrees'])
+        x0 = mod['x0']
+        y0 = mod['y0']
+
+        # add outlines
+        rect = formRect(mod)
+        rect = [transform(point, th, x0, y0) for point in rect] 
+        rects.append(rect)
+
+        # add pads
+        for pad in mod['pads']:
+            point = (pad['x'], pad['y'])
+            pads.append(transform(point, th, x0, y0))
+
+    edge = formRect(json_dict['border'])
+
+    # Determine max extents of components
+    bbox = BoundingBox()
+    for rect in rects:
+        for point in rect:
+            bbox.add(*point)
+    for point in pads:
+        bbox.add(*point)
+    for point in edge:
+        bbox.add(*point)
+
+    # remap points to pixel space
+    screenWidth = 400
+    screenHeight = 400
+    rects = [remap(rect, bbox, screenWidth, screenHeight) for rect in rects]
+    pads = remap(pads, bbox, screenWidth, screenHeight)
+    edge = remap(edge, bbox, screenWidth, screenHeight)
+
+    pygame.init()
+
+    # Define the colors we will use in RGB format
+    BLACK = (  0,   0,   0)
+    WHITE = (255, 255, 255)
+    BLUE =  (  0,   0, 255)
+    GREEN = (  0, 255,   0)
+    RED =   (255,   0,   0)
+
+    # Set the height and width of the screen
+    size = [screenWidth, screenHeight]
+    screen = pygame.display.set_mode(size)
+ 
+    pygame.display.set_caption("Example code for the draw module")
+
+    #Loop until the user clicks the close button.
+    done = False
+    clock = pygame.time.Clock()
+     
+    while not done:
+     
+        # This limits the while loop to a max of 10 times per second.
+        # Leave this out and we will use all CPU we can.
+        clock.tick(10)
+
+        for event in pygame.event.get(): # User did something
+            if event.type == pygame.QUIT: # If user clicked close
+                done=True # Flag that we are done so we exit this loop
+
+        screen.fill(WHITE)
+
+        for rect in rects:
+            pygame.draw.lines(screen, BLACK, True, rect, 1)
+
+        for pad in pads:
+            pygame.draw.circle(screen, RED, pad, 1, 0)
+
+        pygame.draw.lines(screen, GREEN, True, edge, 1)
+
+        pygame.display.flip()
+
+    pygame.quit()
+
+if __name__ == '__main__':
+    main()
