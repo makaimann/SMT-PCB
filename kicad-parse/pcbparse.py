@@ -9,7 +9,7 @@ import re
 import argparse
 import json
 from tinytree import Tree
-from math import hypot
+from math import hypot, radians
 
 class PcbTree(Tree):
     # findAll modified slightly from tinytree
@@ -186,10 +186,13 @@ def parse_modules(tree):
 
         # parse rotation
         if len(cmd) >= 4:
-            degrees = float(cmd[3].value)
+            # note the minus sign. the convention used in the JSON
+            # format is that positive rotation is counterclockwise
+            # this is opposite of KiCAD
+            theta = -radians(float(cmd[3].value))
         else:
-            degrees = 0
-        module['degrees'] = degrees
+            theta = 0
+        module['theta'] = theta
 
         # parse boundary lines
         for cmd in m.findCmdAll('fp_line'):

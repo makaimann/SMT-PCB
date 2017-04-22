@@ -9,7 +9,7 @@ import pygame
 import json
 import argparse
 import sys
-from math import radians, cos, sin
+from math import cos, sin
 from pcbparse import BoundingBox
 
 def getCenter(bbox):
@@ -17,7 +17,7 @@ def getCenter(bbox):
     cy = (bbox.ymin + bbox.ymax)/2
     return cx, cy
 
-def scaleFactor(bbox, w, h, margin=0.2):
+def scaleFactor(bbox, w, h, margin):
     scaleX = w*(1-margin)/(bbox.xmax-bbox.xmin)
     scaleY = h*(1-margin)/(bbox.ymax-bbox.ymin)
     return min(scaleX, scaleY)
@@ -38,21 +38,21 @@ def mult(point, scale):
 def translate(point, x0, y0):
     return (point[0]+x0, point[1]+y0)
 
-def rotate(point, th):
-    x = cos(th)*point[0] - sin(th)*point[1]
-    y = sin(th)*point[0] + cos(th)*point[1]
+def rotate(point, theta):
+    x = cos(theta)*point[0] - sin(theta)*point[1]
+    y = sin(theta)*point[0] + cos(theta)*point[1]
     return (x, y)
 
 def transform(point, th, x0, y0):
     return translate(rotate(point, th), x0, y0)
 
-def remap(items, bbox, screenWidth, screenHeight):
+def remap(items, bbox, screenWidth, screenHeight, margin):
     # apply translation
     x0, y0 = getCenter(bbox)
     items = [translate(p, -x0, -y0) for p in items]
 
     # apply scale factor
-    scale = scaleFactor(bbox, screenWidth, screenHeight)
+    scale = scaleFactor(bbox, screenWidth, screenHeight, margin)
     items = [mult(p, scale) for p in items]
     
     # apply translation
@@ -67,6 +67,9 @@ def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Draw PCB design.')
     parser.add_argument('infile')
+    parser.add_argument('--width', type=int, default=400)
+    parser.add_argument('--height', type=int, default=400)
+    parser.add_argument('--margin', type=float, default=0.1)
     args = parser.parse_args()
 
     # Parse file
@@ -77,19 +80,19 @@ def main():
     pads = []
     rects = []
     for mod in json_dict['modules']:
-        th = -radians(mod['degrees'])
+        theta = mod['theta']
         x0 = mod['x0']
         y0 = mod['y0']
 
         # add outlines
         rect = formRect(mod)
-        rect = [transform(point, th, x0, y0) for point in rect] 
+        rect = [transform(point, theta, x0, y0) for point in rect] 
         rects.append(rect)
 
         # add pads
         for pad in mod['pads']:
             point = (pad['x'], pad['y'])
-            pads.append(transform(point, th, x0, y0))
+            pads.append(transform(point, theta, x0, y0))
 
     edge = formRect(json_dict['border'])
 
@@ -103,12 +106,15 @@ def main():
     for point in edge:
         bbox.add(*point)
 
+    # resize screen to fit
+    scale = scaleFactor(bbox, args.width, args.height, args.margin)
+    screenWidth = round(scale*bbox.width/(1-args.margin))
+    screenHeight = round(scale*bbox.height/(1-args.margin))
+
     # remap points to pixel space
-    screenWidth = 400
-    screenHeight = 400
-    rects = [remap(rect, bbox, screenWidth, screenHeight) for rect in rects]
-    pads = remap(pads, bbox, screenWidth, screenHeight)
-    edge = remap(edge, bbox, screenWidth, screenHeight)
+    rects = [remap(rect, bbox, screenWidth, screenHeight, args.margin) for rect in rects]
+    pads = remap(pads, bbox, screenWidth, screenHeight, args.margin)
+    edge = remap(edge, bbox, screenWidth, screenHeight, args.margin)
 
     pygame.init()
 
