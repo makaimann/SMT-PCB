@@ -179,7 +179,7 @@ def parse_modules(tree):
         # parse X,Y location
         cmd = m.findCmd('at').children
         x0 = float(cmd[1].value)
-        y0 = float(cmd[2].value)
+        y0 = -float(cmd[2].value)
 
         # parse rotation
         if 3 < len(cmd):
@@ -194,35 +194,35 @@ def parse_modules(tree):
         # parse boundary lines
         for cmd in m.findCmdAll('fp_line'):
             start = cmd.findCmd('start').children
-            box.add(float(start[1].value), float(start[2].value))
+            box.add(float(start[1].value), -float(start[2].value))
             end = cmd.findCmd('end').children
-            box.add(float(end[1].value), float(end[2].value))
+            box.add(float(end[1].value), -float(end[2].value))
 
         # parse boundary arcs
         for cmd in m.findCmdAll('fp_arc'):
             start = cmd.findCmd('start').children
-            box.add(float(start[1].value), float(start[2].value))
+            box.add(float(start[1].value), -float(start[2].value))
             end = cmd.findCmd('end').children
-            box.add(float(end[1].value), float(end[2].value))
+            box.add(float(end[1].value), -float(end[2].value))
 
         # parse boundary circles
         for cmd in m.findCmdAll('fp_circle'):
             center = cmd.findCmd('center').children
-            cx, cy = float(center[1].value), float(center[2].value)
+            cx, cy = float(center[1].value), -float(center[2].value)
             end = cmd.findCmd('end').children
-            ex, ey = float(end[1].value), float(end[2].value)
+            ex, ey = float(end[1].value), -float(end[2].value)
             r = hypot(ex-cx, ey-cy)
             box.add(cx-r, cy-r)
             box.add(cx+r, cy-r)
-            box.add(cx+r, cy+r)
             box.add(cx-r, cy+r)
+            box.add(cx+r, cy+r)
 
         # parse pads
         module['pads'] = []
         for cmd in m.findCmdAll('pad'):
             center = cmd.findCmd('at').children
             x = float(center[1].value)
-            y = float(center[2].value)
+            y = -float(center[2].value)
             box.add(x, y)
             net = cmd.findCmd('net')
             if net:
@@ -233,19 +233,17 @@ def parse_modules(tree):
             module['pads'].append({'netname': netname, 'x': x, 'y': y})
 
         # find upper left corner of part with respect to original component center
-        ulx = box.xmin
-        uly = box.ymin
+        llx = box.xmin
+        lly = box.ymin
         
-        # update pad positions to be relative to the upper left corner
+        # update pad positions to be relative to the lower left corner
         for pad in module['pads']:
-            pad['x'] = pad['x'] - ulx
-            pad['y'] = pad['y'] - uly
+            pad['x'] = pad['x'] - llx
+            pad['y'] = pad['y'] - lly
         
-        # define location of upper left corner (after rotation)
-        # note that the coefficients are negated for sine as compared 
-        # to the standard rotation matrix, since the y axis points down
-        module['x'] = x0 + ulx*cos(theta) + uly*sin(theta)
-        module['y'] = y0 - ulx*sin(theta) + uly*cos(theta)
+        # define location of lower left corner (after rotation)
+        module['x'] = x0 + llx*cos(theta) - lly*sin(theta)
+        module['y'] = y0 + llx*sin(theta) + lly*cos(theta)
 
         # write extents
         module['width'] = box.width
@@ -266,9 +264,9 @@ def parse_border(tree):
 
         # Store details
         start = line.findCmd('start').children
-        box.add(float(start[1].value), float(start[2].value))
+        box.add(float(start[1].value), -float(start[2].value))
         end = line.findCmd('end').children
-        box.add(float(end[1].value), float(end[2].value))
+        box.add(float(end[1].value), -float(end[2].value))
 
     return box
 

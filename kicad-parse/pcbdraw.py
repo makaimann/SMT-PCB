@@ -18,8 +18,8 @@ def getCenter(bbox):
     return cx, cy
 
 def scaleFactor(bbox, w, h, margin):
-    scaleX = w*(1-margin)/(bbox.xmax-bbox.xmin)
-    scaleY = h*(1-margin)/(bbox.ymax-bbox.ymin)
+    scaleX = w*(1-margin)/bbox.width
+    scaleY = h*(1-margin)/bbox.height
     return min(scaleX, scaleY)
 
 def formRect(thing):
@@ -33,27 +33,30 @@ def roundPoint(point):
 def mult(point, scale):
     return (scale*point[0], scale*point[1])
 
+def invertY(point):
+    return (point[0], -point[1])
+
 def translate(point, x, y):
     return (point[0]+x, point[1]+y)
 
 def rotate(point, theta):
-    # note that the coefficients are negated for sine as compared 
-    # to the standard rotation matrix, since the y axis points down
-    x = + point[0]*cos(theta) + point[1]*sin(theta)
-    y = - point[0]*sin(theta) + point[1]*cos(theta)
+    x = point[0]*cos(theta) - point[1]*sin(theta)
+    y = point[0]*sin(theta) + point[1]*cos(theta)
     return (x, y)
 
 def transform(point, th, x, y):
     return translate(rotate(point, th), x, y)
 
-def remap(items, bbox, screenWidth, screenHeight, margin):
+def remap(items, bbox, scale, screenWidth, screenHeight, margin):
     # apply translation
     x0, y0 = getCenter(bbox)
     items = [translate(p, -x0, -y0) for p in items]
 
     # apply scale factor
-    scale = scaleFactor(bbox, screenWidth, screenHeight, margin)
     items = [mult(p, scale) for p in items]
+
+    # invert Y value
+    items = [invertY(p) for p in items]
     
     # apply translation
     items = [translate(p, screenWidth/2, screenHeight/2) for p in items]
@@ -112,7 +115,7 @@ def main():
     screenHeight = round(scale*bbox.height/(1-args.margin))
 
     # bake in remapping parameters
-    remapc = lambda points: remap(points, bbox, screenWidth, screenHeight, args.margin)
+    remapc = lambda points: remap(points, bbox, scale, screenWidth, screenHeight, args.margin)
 
     # remap points to pixel space
     rects = [remapc(rect) for rect in rects]
