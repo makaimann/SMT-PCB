@@ -23,11 +23,9 @@ def scaleFactor(bbox, w, h, margin):
     return min(scaleX, scaleY)
 
 def formRect(thing):
-    xmin = thing['xmin']
-    xmax = thing['xmax']
-    ymin = thing['ymin']
-    ymax = thing['ymax']
-    return [(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)]
+    w = thing['width']
+    h = thing['height']
+    return [(0,0), (w,0), (w,h), (0,h)]
 
 def roundPoint(point):
     return (round(point[0]), round(point[1]))
@@ -35,16 +33,18 @@ def roundPoint(point):
 def mult(point, scale):
     return (scale*point[0], scale*point[1])
 
-def translate(point, x0, y0):
-    return (point[0]+x0, point[1]+y0)
+def translate(point, x, y):
+    return (point[0]+x, point[1]+y)
 
 def rotate(point, theta):
-    x = cos(theta)*point[0] - sin(theta)*point[1]
-    y = sin(theta)*point[0] + cos(theta)*point[1]
+    # note that the coefficients are negated for sine as compared 
+    # to the standard rotation matrix, since the y axis points down
+    x = + point[0]*cos(theta) + point[1]*sin(theta)
+    y = - point[0]*sin(theta) + point[1]*cos(theta)
     return (x, y)
 
-def transform(point, th, x0, y0):
-    return translate(rotate(point, th), x0, y0)
+def transform(point, th, x, y):
+    return translate(rotate(point, th), x, y)
 
 def remap(items, bbox, screenWidth, screenHeight, margin):
     # apply translation
@@ -76,33 +76,33 @@ def main():
     with open(args.infile, 'r') as f:
         json_dict = json.load(f)
 
-    # Add module outlines and pads
+    # Bounding box to determine max extents of components and board
+    bbox = BoundingBox()
+
+    # Determine module outlines and pad locations
     pads = []
     rects = []
     for mod in json_dict['modules']:
         theta = mod['theta']
-        x0 = mod['x0']
-        y0 = mod['y0']
+        x = mod['x']
+        y = mod['y']
 
         # add outlines
         rect = formRect(mod)
-        rect = [transform(point, theta, x0, y0) for point in rect] 
+        rect = [transform(point, theta, x, y) for point in rect] 
         rects.append(rect)
+        for point in rect:
+            bbox.add(*point)
 
         # add pads
         for pad in mod['pads']:
             point = (pad['x'], pad['y'])
-            pads.append(transform(point, theta, x0, y0))
-
-    edge = formRect(json_dict['border'])
-
-    # Determine max extents of components
-    bbox = BoundingBox()
-    for rect in rects:
-        for point in rect:
+            point = transform(point, theta, x, y)
+            pads.append(point)
             bbox.add(*point)
-    for point in pads:
-        bbox.add(*point)
+
+    # Determine the corners of the board
+    edge = formRect(json_dict['border'])
     for point in edge:
         bbox.add(*point)
 
@@ -111,10 +111,13 @@ def main():
     screenWidth = round(scale*bbox.width/(1-args.margin))
     screenHeight = round(scale*bbox.height/(1-args.margin))
 
+    # bake in remapping parameters
+    remapc = lambda points: remap(points, bbox, screenWidth, screenHeight, args.margin)
+
     # remap points to pixel space
-    rects = [remap(rect, bbox, screenWidth, screenHeight, args.margin) for rect in rects]
-    pads = remap(pads, bbox, screenWidth, screenHeight, args.margin)
-    edge = remap(edge, bbox, screenWidth, screenHeight, args.margin)
+    rects = [remapc(rect) for rect in rects]
+    pads = remapc(pads)
+    edge = remapc(edge)
 
     pygame.init()
 

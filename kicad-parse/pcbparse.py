@@ -9,7 +9,7 @@ import re
 import argparse
 import json
 from tinytree import Tree
-from math import hypot, radians
+from math import hypot, radians, cos, sin
 
 class PcbTree(Tree):
     # findAll modified slightly from tinytree
@@ -176,23 +176,20 @@ def parse_modules(tree):
         reference = m.findCmd('fp_text', 'reference').children[2].value
         module['reference'] = reference
 
-        # create the bounding box to store component extents
-        box = BoundingBox()
- 
         # parse X,Y location
         cmd = m.findCmd('at').children
-        module['x0'] = float(cmd[1].value)
-        module['y0'] = float(cmd[2].value)
+        x0 = float(cmd[1].value)
+        y0 = float(cmd[2].value)
 
         # parse rotation
-        if len(cmd) >= 4:
-            # note the minus sign. the convention used in the JSON
-            # format is that positive rotation is counterclockwise
-            # this is opposite of KiCAD
-            theta = -radians(float(cmd[3].value))
+        if 3 < len(cmd):
+            theta = radians(float(cmd[3].value))
         else:
             theta = 0
         module['theta'] = theta
+
+        # create the bounding box to store component extents
+        box = BoundingBox()
 
         # parse boundary lines
         for cmd in m.findCmdAll('fp_line'):
@@ -235,11 +232,24 @@ def parse_modules(tree):
 
             module['pads'].append({'netname': netname, 'x': x, 'y': y})
 
+        # find upper left corner of part with respect to original component center
+        ulx = box.xmin
+        uly = box.ymin
+        
+        # update pad positions to be relative to the upper left corner
+        for pad in module['pads']:
+            pad['x'] = pad['x'] - ulx
+            pad['y'] = pad['y'] - uly
+        
+        # define location of upper left corner (after rotation)
+        # note that the coefficients are negated for sine as compared 
+        # to the standard rotation matrix, since the y axis points down
+        module['x'] = x0 + ulx*cos(theta) + uly*sin(theta)
+        module['y'] = y0 - ulx*sin(theta) + uly*cos(theta)
+
         # write extents
-        module['xmin'] = box.xmin
-        module['ymin'] = box.ymin
-        module['xmax'] = box.xmax
-        module['ymax'] = box.ymax
+        module['width'] = box.width
+        module['height'] = box.height
 
     return modules
 
@@ -260,13 +270,7 @@ def parse_border(tree):
         end = line.findCmd('end').children
         box.add(float(end[1].value), float(end[2].value))
 
-    border = {}
-    border['xmin'] = box.xmin
-    border['ymin'] = box.ymin
-    border['xmax'] = box.xmax
-    border['ymax'] = box.ymax
-
-    return border
+    return box
 
 def main():
     # Parse command-line arguments
@@ -278,14 +282,21 @@ def main():
     # Parse file
     pcb = PcbParser(args.infile)
 
-    # Create dictionary for storing the design information
-    json_dict = {}
-
     # Parse module information
-    json_dict['modules'] = parse_modules(pcb.tree)
+    modules = parse_modules(pcb.tree)
 
     # Parse border information
-    json_dict['border'] = parse_border(pcb.tree)
+    box = parse_border(pcb.tree)
+    
+    # Shift all parts to be relative to the upper left corner of the board
+    for module in modules:
+        module['x'] = module['x'] - box.xmin
+        module['y'] = module['y'] - box.ymin
+
+    # Create dictionary for storing the design information
+    json_dict = {}
+    json_dict['modules'] = modules
+    json_dict['border'] = {'width': box.width, 'height': box.height}
 
     # Print design information to JSON file
     with open(args.outfile, 'w') as f:
