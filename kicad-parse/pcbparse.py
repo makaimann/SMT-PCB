@@ -232,7 +232,7 @@ def parse_modules(tree):
 
             module['pads'].append({'netname': netname, 'x': x, 'y': y})
 
-        # find upper left corner of part with respect to original component center
+        # find lower left corner of part with respect to original component center
         llx = box.xmin
         lly = box.ymin
         
@@ -286,7 +286,7 @@ def main():
     # Parse border information
     box = parse_border(pcb.tree)
     
-    # Shift all parts to be relative to the upper left corner of the board
+    # Shift all parts to be relative to the lower left corner of the board
     for module in modules:
         module['x'] = module['x'] - box.xmin
         module['y'] = module['y'] - box.ymin
