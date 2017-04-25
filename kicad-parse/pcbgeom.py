@@ -5,7 +5,7 @@
 
 # Library enables geometry operations for PCBs
 
-from math import cos, sin
+from math import cos, sin, hypot
 
 class BoundingBox:
     def __init__(self):
@@ -43,6 +43,9 @@ def formRect(w, h):
 def roundPoint(p):
     return (round(p[0]), round(p[1]))
 
+def distPoints(a, b):
+    return hypot(a[0]-b[0], a[1]-b[1])
+
 def mult(p, scale):
     return (scale*p[0], scale*p[1])
 
@@ -60,16 +63,16 @@ def rotate(p, th):
     y = p[0]*sin(th) + p[1]*cos(th)
     return (x, y)
 
-def transform(p, th, mirror, x, y):
-    # rotate
-    p = rotate(p, th)
-
+def transform(point, th, mirror, x, y):
     # invert Y coordinate if on the bottom
     if mirror:
-        p = invertY(p)
+        point = invertY(point)
+
+    # rotate
+    point = rotate(point, th)
 
     # translate by offset
-    p = translate(p, x, y)
+    point = translate(point, x, y)
 
-    # return point
-    return p
+    # return
+    return point

@@ -8,8 +8,12 @@
 import re
 import argparse
 import json
+
 from tinytree import Tree
-from math import hypot, radians, cos, sin
+from math import radians
+from itertools import chain
+
+from pcbgeom import *
 
 class PcbTree(Tree):
     # findAll modified slightly from tinytree
@@ -66,32 +70,6 @@ class PcbTree(Tree):
                 out = out + PcbTree.to_str(e, level + 1)
             out = out + indent + ')\n'
             return out
-
-class BoundingBox:
-    def __init__(self):
-        inf = float('inf')
-        self.xmin = inf
-        self.xmax = -inf
-        self.ymin = inf
-        self.ymax = -inf
-
-    def add(self, x, y):
-        if x < self.xmin:
-            self.xmin = x
-        if x > self.xmax:
-            self.xmax = x
-        if y < self.ymin:   
-            self.ymin = y
-        if y > self.ymax:
-            self.ymax = y
-
-    @property
-    def width(self):
-        return self.xmax - self.xmin
-
-    @property
-    def height(self):
-        return self.ymax - self.ymin
 
 class PcbParser:
 
@@ -176,6 +154,14 @@ def parse_modules(tree):
         reference = m.findCmd('fp_text', 'reference').children[2].value
         module['reference'] = reference
 
+        # indicate placement side
+        side = m.findCmd('layer').children[1].value
+        if side == 'F.Cu':
+            mirror = False
+        else:
+            mirror = True
+        module['mirror'] = mirror
+
         # parse X,Y location
         cmd = m.findCmd('at').children
         x0 = float(cmd[1].value)
@@ -191,46 +177,54 @@ def parse_modules(tree):
         # create the bounding box to store component extents
         box = BoundingBox()
 
-        # parse boundary lines
-        for cmd in m.findCmdAll('fp_line'):
-            start = cmd.findCmd('start').children
-            box.add(float(start[1].value), -float(start[2].value))
-            end = cmd.findCmd('end').children
-            box.add(float(end[1].value), -float(end[2].value))
+        # parse lines, arcs, and circles
+        for fp_type in ['fp_line', 'fp_arc', 'fp_circle']:
+            for cmd in m.findCmdAll(fp_type):
+                # read two points
+                if fp_type == 'fp_circle':
+                    points = [cmd.findCmd('center').children, cmd.findCmd('end').children]
+                else:
+                    points = [cmd.findCmd('start').children, cmd.findCmd('end').children]
+                
+                # parse points
+                points = [(float(entry[1].value), -float(entry[2].value)) for entry in points]
 
-        # parse boundary arcs
-        for cmd in m.findCmdAll('fp_arc'):
-            start = cmd.findCmd('start').children
-            box.add(float(start[1].value), -float(start[2].value))
-            end = cmd.findCmd('end').children
-            box.add(float(end[1].value), -float(end[2].value))
+                # mirror points if needed
+                if mirror:
+                    points = [invertY(point) for point in points]
 
-        # parse boundary circles
-        for cmd in m.findCmdAll('fp_circle'):
-            center = cmd.findCmd('center').children
-            cx, cy = float(center[1].value), -float(center[2].value)
-            end = cmd.findCmd('end').children
-            ex, ey = float(end[1].value), -float(end[2].value)
-            r = hypot(ex-cx, ey-cy)
-            box.add(cx-r, cy-r)
-            box.add(cx+r, cy-r)
-            box.add(cx-r, cy+r)
-            box.add(cx+r, cy+r)
-
+                # if a circle, compute the lower left and upper right corners of the bounding box
+                if fp_type == 'fp_circle':
+                    center = points[0]
+                    end = points[1]
+                    r = distPoints(center, end)
+                    points = [(center[0]-r, center[1]-r), (center[0]+r, center[1]+r)]
+                
+                # add points to bounding box
+                for point in points:
+                    box.add(*point)
+            
         # parse pads
         module['pads'] = []
         for cmd in m.findCmdAll('pad'):
-            center = cmd.findCmd('at').children
-            x = float(center[1].value)
-            y = -float(center[2].value)
-            box.add(x, y)
+            # read out pad center
+            point = cmd.findCmd('at').children
+            point = (float(point[1].value), -float(point[2].value))
+            if mirror:
+                point = invertY(point)
+
+            # read out net name
             net = cmd.findCmd('net')
             if net:
                 netname = net.children[2].value
             else:
                 netname = None
 
-            module['pads'].append({'netname': netname, 'x': x, 'y': y})
+            # create entry for module
+            module['pads'].append({'netname': netname, 'x': point[0], 'y': point[1]})
+
+            # add pad to the bounding box
+            box.add(*point)
 
         # find lower left corner of part with respect to original component center
         llx = box.xmin
@@ -238,12 +232,13 @@ def parse_modules(tree):
         
         # update pad positions to be relative to the lower left corner
         for pad in module['pads']:
-            pad['x'] = pad['x'] - llx
-            pad['y'] = pad['y'] - lly
+            pad['x'] -= llx
+            pad['y'] -= lly
         
-        # define location of lower left corner (after rotation)
-        module['x'] = x0 + llx*cos(theta) - lly*sin(theta)
-        module['y'] = y0 + llx*sin(theta) + lly*cos(theta)
+        # define location of lower left corner (after rotation and mirroring, if desired)
+        ll = (llx, lly)
+        ll = transform(ll, theta, mirror, x0, y0)
+        module['x'], module['y'] = ll[0], ll[1]
 
         # write extents
         module['width'] = box.width
@@ -288,8 +283,8 @@ def main():
     
     # Shift all parts to be relative to the lower left corner of the board
     for module in modules:
-        module['x'] = module['x'] - box.xmin
-        module['y'] = module['y'] - box.ymin
+        module['x'] -= box.xmin
+        module['y'] -= box.ymin
 
     # Create dictionary for storing the design information
     json_dict = {}
