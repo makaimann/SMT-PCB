@@ -118,7 +118,7 @@ def main():
     size = [screenWidth, screenHeight]
     screen = pygame.display.set_mode(size)
  
-    pygame.display.set_caption("Example code for the draw module")
+    pygame.display.set_caption("pcbdraw")
 
     #Loop until the user clicks the close button.
     done = False
