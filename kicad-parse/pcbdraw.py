@@ -79,12 +79,15 @@ def main():
 
         # add pads
         for pad in mod['pads']:
-            point = (pad['x'], pad['y'])
-            point = transform(point, theta, mirror, x, y)
-            bbox.add(*point)
+            through = pad['through']
+            rect = formRect(pad['width'], pad['height'])
+            rect = [translate(point, pad['x'], pad['y']) for point in rect]
+            rect = [transform(point, theta, mirror, x, y) for point in rect] 
+            for point in rect:
+                bbox.add(*point)
 
             # Add to list of pads, noting the side
-            pads.append((point,mirror))
+            pads.append((rect,mirror,through))
 
     # Determine the corners of the board
     border = json_dict['border']
@@ -102,7 +105,7 @@ def main():
 
     # remap points to pixel space
     rects = [(remapc(rect), mirror) for rect, mirror in rects]
-    pads = [(remapc([pad])[0], mirror) for pad, mirror in pads]
+    pads = [(remapc(rect), mirror, through) for rect, mirror, through in pads]
     edge = remapc(edge)
 
     pygame.init()
@@ -142,11 +145,11 @@ def main():
             if draw:
                 pygame.draw.lines(screen, color, True, rect, 1)
 
-        for pad, mirror in pads:
+        for pad, mirror, through in pads:
             color = BLUE if mirror else RED
-            draw = (not mirror and args.top) or (mirror and args.bottom)
+            draw = through or (not mirror and args.top) or (mirror and args.bottom)
             if draw:
-                pygame.draw.circle(screen, color, pad, 1, 0)
+                pygame.draw.lines(screen, color, True, pad, 1)
                 
         pygame.draw.lines(screen, GREEN, True, edge, 1)
 

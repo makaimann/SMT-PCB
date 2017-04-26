@@ -207,11 +207,44 @@ def parse_modules(tree):
         # parse pads
         module['pads'] = []
         for cmd in m.findCmdAll('pad'):
+            # make dictionary for pad
+            pad = {}
+            module['pads'].append(pad)
+
+            # read out pad type
+            ptype = cmd.children[2].value
+            pad['through'] = (ptype == 'thru_hole')
+
             # read out pad center
-            point = cmd.findCmd('at').children
-            point = (float(point[1].value), -float(point[2].value))
+            at = cmd.findCmd('at').children
+            center = (float(at[1].value), -float(at[2].value))
             if mirror:
-                point = invertY(point)
+                center = invertY(center)
+
+            # read out pad rotation
+            if 3 < len(at):
+                ptheta = radians(float(at[3].value))
+            else:
+                ptheta = 0
+            ptheta -= theta
+
+            # read out pad size
+            size = cmd.findCmd('size').children
+            w, h = float(size[1].value), float(size[2].value)
+    
+            # form bounding pad rectangle
+            prect = [(-w/2.0, -h/2.0), (-w/2.0, h/2.0), (w/2.0, h/2.0), (w/2.0, -h/2.0)]
+            prect = [translate(rotate(point, ptheta), center[0], center[1]) for point in prect]
+            pbox = BoundingBox()
+            for point in prect:
+                pbox.add(*point)
+                box.add(*point)
+
+            # generate lower left and upper left corners
+            pad['x'] = pbox.xmin
+            pad['y'] = pbox.ymin
+            pad['width'] = pbox.width
+            pad['height'] = pbox.height
 
             # read out net name
             net = cmd.findCmd('net')
@@ -219,12 +252,7 @@ def parse_modules(tree):
                 netname = net.children[2].value
             else:
                 netname = None
-
-            # create entry for module
-            module['pads'].append({'netname': netname, 'x': point[0], 'y': point[1]})
-
-            # add pad to the bounding box
-            box.add(*point)
+            pad['netname'] = netname
 
         # find lower left corner of part with respect to original component center
         llx = box.xmin
