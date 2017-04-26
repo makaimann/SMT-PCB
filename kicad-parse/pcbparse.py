@@ -156,10 +156,12 @@ def parse_modules(tree):
 
         # indicate placement side
         side = m.findCmd('layer').children[1].value
-        if side == 'F.Cu':
+        if side.lower()[0] in ['f', 't']:
             mirror = False
-        else:
+        elif side.lower()[0] in ['b']:
             mirror = True
+        else:
+            raise Exception('Unknown board side.')
         module['mirror'] = mirror
 
         # parse X,Y location
@@ -178,11 +180,18 @@ def parse_modules(tree):
         box = BoundingBox()
 
         # parse lines, arcs, and circles
-        for fp_type in ['fp_line', 'fp_arc', 'fp_circle']:
+        for fp_type in ['fp_line', 'fp_arc', 'fp_circle', 'fp_poly']:
             for cmd in m.findCmdAll(fp_type):
+                # first check the layer
+                layer = cmd.findCmd('layer')
+                if layer and layer.children[1].value == 'Edge.Cuts':
+                    continue
+
                 # read two points
                 if fp_type == 'fp_circle':
                     points = [cmd.findCmd('center').children, cmd.findCmd('end').children]
+                elif fp_type == 'fp_poly':
+                    points = [xy.children for xy in cmd.findCmd('pts').findCmdAll('xy')]
                 else:
                     points = [cmd.findCmd('start').children, cmd.findCmd('end').children]
                 
@@ -274,22 +283,60 @@ def parse_modules(tree):
 
     return modules
 
+def gr_line_edge(tree):
+    for line in tree.findCmdAll('gr_line'):
+        layer = line.findCmd('layer')
+        if layer and layer.children[1].value == 'Edge.Cuts':
+            yield line
+
+def mod_cmd_edge(tree):
+    for m in tree.findCmdAll('module'):
+        for fp_type in ['fp_line', 'fp_arc', 'fp_circle', 'fp_poly']:
+            for cmd in m.findCmdAll(fp_type):
+                layer = cmd.findCmd('layer')
+                if layer and layer.children[1].value == 'Edge.Cuts':
+                    yield cmd
+
 def parse_border(tree):
 
     box = BoundingBox()
-    for line in tree.findCmdAll('gr_line'):
-        # Check that this line is on the Edge.Cuts layer
-        layer = line.findCmd('layer')
-        if layer:
-            layer = layer.children
-            if layer[1].value != 'Edge.Cuts':
-                continue
 
-        # Store details
-        start = line.findCmd('start').children
-        box.add(float(start[1].value), -float(start[2].value))
-        end = line.findCmd('end').children
-        box.add(float(end[1].value), -float(end[2].value))
+    # look for all lines on Edge.Cuts
+    for cmd in chain(gr_line_edge(tree), mod_cmd_edge(tree)):
+        cmd_type = cmd.children[0].value
+        
+        # read two points
+        if cmd_type == 'fp_circle':
+            points = [cmd.findCmd('center').children, cmd.findCmd('end').children]
+        elif cmd_type == 'fp_poly':
+            points = [xy.children for xy in cmd.findCmd('pts').findCmdAll('xy')]
+        else:
+            points = [cmd.findCmd('start').children, cmd.findCmd('end').children]
+                
+        # parse points
+        points = [(float(entry[1].value), -float(entry[2].value)) for entry in points]
+
+        # if a circle, compute the lower left and upper right corners of the bounding box
+        if cmd_type == 'fp_circle':
+            center = points[0]
+            end = points[1]
+            r = distPoints(center, end)
+            points = [(center[0]-r, center[1]-r), (center[0]+r, center[1]+r)]
+
+        # translate and rotate if necessary
+        if cmd_type in ['fp_line', 'fp_arc', 'fp_circle', 'fp_poly']:
+            at = cmd.parent.findCmd('at').children
+            x = float(at[1].value)
+            y = -float(at[2].value)
+            if 3 < len(at):
+                theta = radians(float(at[3].value))
+            else:
+                theta = 0
+            points = [translate(rotate(point, theta), x, y) for point in points]
+        
+        # add points to bounding box
+        for point in points:
+            box.add(*point)
 
     return box
 

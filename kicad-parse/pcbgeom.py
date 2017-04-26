@@ -40,9 +40,6 @@ class BoundingBox:
 def formRect(w, h):
     return [(0,0), (w,0), (w,h), (0,h)]
 
-def roundPoint(p):
-    return (round(p[0]), round(p[1]))
-
 def distPoints(a, b):
     return hypot(a[0]-b[0], a[1]-b[1])
 

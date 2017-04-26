@@ -5,36 +5,16 @@
 
 # Library enables user to draw a PCB file from JSON
 
-import pygame
 import json
 import argparse
 import sys
 
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib
+from matplotlib.patches import Polygon
+
 from pcbgeom import *
-
-def scaleFactor(bbox, w, h, margin):
-    scaleX = w*(1-margin)/bbox.width
-    scaleY = h*(1-margin)/bbox.height
-    return min(scaleX, scaleY)
-
-def remap(items, bbox, scale, screenWidth, screenHeight, margin):
-    # apply translation
-    x0, y0 = bbox.center
-    items = [translate(p, -x0, -y0) for p in items]
-
-    # apply scale factor
-    items = [mult(p, scale) for p in items]
-
-    # invert Y value
-    items = [invertY(p) for p in items]
-    
-    # apply translation
-    items = [translate(p, screenWidth/2, screenHeight/2) for p in items]
-
-    # round points
-    items = [roundPoint(p) for p in items]
-
-    return items
 
 def main():
     # Parse command-line arguments
@@ -45,6 +25,7 @@ def main():
     parser.add_argument('--margin', type=float, default=0.1)
     parser.add_argument('--top', action='store_true')
     parser.add_argument('--bottom', action='store_true')
+    parser.add_argument('--alpha', type=float, default=0.75)
     args = parser.parse_args()
 
     # If neither top nor bottom is specified, draw both
@@ -55,9 +36,6 @@ def main():
     # Parse file
     with open(args.infile, 'r') as f:
         json_dict = json.load(f)
-
-    # Bounding box to determine max extents of components and board
-    bbox = BoundingBox()
 
     # Determine module outlines and pad locations
     pads = []
@@ -71,8 +49,6 @@ def main():
         # add outlines
         rect = formRect(mod['width'], mod['height'])
         rect = [transform(point, theta, mirror, x, y) for point in rect] 
-        for point in rect:
-            bbox.add(*point)
     
         # Add to list of rectangles, noting the side
         rects.append((rect,mirror))
@@ -83,8 +59,6 @@ def main():
             rect = formRect(pad['width'], pad['height'])
             rect = [translate(point, pad['x'], pad['y']) for point in rect]
             rect = [transform(point, theta, mirror, x, y) for point in rect] 
-            for point in rect:
-                bbox.add(*point)
 
             # Add to list of pads, noting the side
             pads.append((rect,mirror,through))
@@ -92,70 +66,31 @@ def main():
     # Determine the corners of the board
     border = json_dict['border']
     edge = formRect(border['width'], border['height'])
-    for point in edge:
-        bbox.add(*point)
-    
-    # resize screen to fit
-    scale = scaleFactor(bbox, args.width, args.height, args.margin)
-    screenWidth = round(scale*bbox.width/(1-args.margin))
-    screenHeight = round(scale*bbox.height/(1-args.margin))
-
-    # bake in remapping parameters
-    remapc = lambda points: remap(points, bbox, scale, screenWidth, screenHeight, args.margin)
-
-    # remap points to pixel space
-    rects = [(remapc(rect), mirror) for rect, mirror in rects]
-    pads = [(remapc(rect), mirror, through) for rect, mirror, through in pads]
-    edge = remapc(edge)
-
-    pygame.init()
-
-    # Define the colors we will use in RGB format
-    BLACK = (  0,   0,   0)
-    WHITE = (255, 255, 255)
-    BLUE =  (  0,   0, 255)
-    GREEN = (  0, 255,   0)
-    RED =   (255,   0,   0)
-
-    # Set the height and width of the screen
-    size = [screenWidth, screenHeight]
-    screen = pygame.display.set_mode(size)
  
-    pygame.display.set_caption("pcbdraw")
+    fig, ax = plt.subplots()
 
-    #Loop until the user clicks the close button.
-    done = False
-    clock = pygame.time.Clock()
-     
-    while not done:
-     
-        # This limits the while loop to a max of 10 times per second.
-        # Leave this out and we will use all CPU we can.
-        clock.tick(10)
+    for rect, mirror in rects:
+        color = 'blue' if mirror else 'red'
+        draw = (not mirror and args.top) or (mirror and args.bottom)
+        if draw:
+            xy = np.array(rect)
+            ax.add_patch(Polygon(xy, closed=True, facecolor='none', edgecolor=color, alpha=args.alpha))
 
-        for event in pygame.event.get(): # User did something
-            if event.type == pygame.QUIT: # If user clicked close
-                done=True # Flag that we are done so we exit this loop
+    for pad, mirror, through in pads:
+        color = 'blue' if mirror else 'red'
+        draw = through or (not mirror and args.top) or (mirror and args.bottom)
+        if draw:
+            xy = np.array(pad)
+            ax.add_patch(Polygon(xy, closed=True, facecolor=color, edgecolor='black', alpha=args.alpha))
 
-        screen.fill(WHITE)
+    # draw the edge
+    xy = np.array(edge)
+    ax.add_patch(Polygon(xy, closed=True, facecolor='none', edgecolor='green', alpha=args.alpha, lw=3))
 
-        for rect, mirror in rects:
-            color = BLUE if mirror else RED
-            draw = (not mirror and args.top) or (mirror and args.bottom)
-            if draw:
-                pygame.draw.lines(screen, color, True, rect, 1)
+    ax.autoscale(True)
+    ax.set_aspect('equal')
 
-        for pad, mirror, through in pads:
-            color = BLUE if mirror else RED
-            draw = through or (not mirror and args.top) or (mirror and args.bottom)
-            if draw:
-                pygame.draw.lines(screen, color, True, pad, 1)
-                
-        pygame.draw.lines(screen, GREEN, True, edge, 1)
-
-        pygame.display.flip()
-
-    pygame.quit()
+    plt.show()                
 
 if __name__ == '__main__':
     main()
