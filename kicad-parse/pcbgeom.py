@@ -5,7 +5,17 @@
 
 # Library enables geometry operations for PCBs
 
-from math import cos, sin, hypot
+import numpy as np
+from math import cos, sin
+
+def getX(p):
+    return p.item(0)
+    
+def getY(p):
+    return p.item(1)
+
+def xy2p(x, y):
+    return np.matrix([[x], [y]])
 
 class BoundingBox:
     def __init__(self):
@@ -14,16 +24,26 @@ class BoundingBox:
         self.xmax = -inf
         self.ymin = inf
         self.ymax = -inf
+        self.empty = True
 
-    def add(self, x, y):
-        if x < self.xmin:
-            self.xmin = x
-        if x > self.xmax:
-            self.xmax = x
-        if y < self.ymin:   
-            self.ymin = y
-        if y > self.ymax:
-            self.ymax = y
+    def add(self, p):
+        self.empty = False
+
+        xmin = np.min(p[0])
+        if xmin < self.xmin:
+            self.xmin = xmin
+
+        xmax = np.max(p[0])
+        if xmax > self.xmax:
+            self.xmax = xmax
+
+        ymin = np.min(p[1])
+        if ymin < self.ymin:   
+            self.ymin = ymin
+
+        ymax = np.max(p[1])
+        if ymax > self.ymax:
+            self.ymax = ymax
 
     @property
     def width(self):
@@ -35,41 +55,63 @@ class BoundingBox:
 
     @property
     def center(self):
-        return (self.xmin + self.xmax)/2.0, (self.ymin + self.ymax)/2.0
+        x = (self.xmin + self.xmax)/2.0
+        y = (self.ymin + self.ymax)/2.0
+        return np.matrix([[x],[y]])
+
+    @property
+    def ll(self):
+        return xy2p(self.xmin, self.ymin)
+
+    @property
+    def ul(self):
+        return xy2p(self.xmin, self.ymax)
+
+    @property
+    def lr(self):
+        return xy2p(self.xmax, self.ymin)
+
+    @property
+    def ur(self):
+        return xy2p(self.xmax, self.ymax)
+
+    @property
+    def rect(self):
+        return np.hstack([self.ll, self.ul, self.ur, self.lr])
 
 def formRect(w, h):
-    return [(0,0), (w,0), (w,h), (0,h)]
+    rect = np.matrix([[0, 0, w, w],
+                      [0, h, h, 0]])
+    return rect
 
 def distPoints(a, b):
-    return hypot(a[0]-b[0], a[1]-b[1])
-
-def mult(p, scale):
-    return (scale*p[0], scale*p[1])
-
-def invertY(p):
-    return (+p[0], -p[1])
+    return np.linalg.norm(a-b)
 
 def invertX(p):
-    return (-p[0], +p[1])
+    M = np.matrix([[ -1,  0],
+                   [  0, +1]])
+    return M*p
 
-def translate(p, x, y):
-    return (p[0]+x, p[1]+y)
+def invertY(p):
+    M = np.matrix([[ +1,  0],
+                   [  0, -1]])
+    return M*p
 
 def rotate(p, th):
-    x = p[0]*cos(th) - p[1]*sin(th)
-    y = p[0]*sin(th) + p[1]*cos(th)
-    return (x, y)
+    M = np.matrix([[ cos(th), -sin(th)],
+                   [ sin(th),  cos(th)]])
+    return M*p
 
-def transform(point, th, mirror, x, y):
+def transform(p, th, mirror, offset):
     # invert Y coordinate if on the bottom
     if mirror:
-        point = invertY(point)
+        p = invertY(p)
 
     # rotate
-    point = rotate(point, th)
+    p = rotate(p, th)
 
     # translate by offset
-    point = translate(point, x, y)
+    p = p + offset
 
     # return
-    return point
+    return p

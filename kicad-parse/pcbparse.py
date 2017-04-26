@@ -9,11 +9,16 @@ import re
 import argparse
 import json
 
+import numpy as np
+
 from tinytree import Tree
 from math import radians
 from itertools import chain
 
 from pcbgeom import *
+
+def cmd2p(cmd):
+    return xy2p(float(cmd[1].value), -float(cmd[2].value))
 
 class PcbTree(Tree):
     # findAll modified slightly from tinytree
@@ -148,7 +153,6 @@ def parse_modules(tree):
     for m in tree.findCmdAll('module'):
         # create new module and add to the toplevel dictionary
         module = {}
-        modules.append(module)
 
         # add reference designator
         reference = m.findCmd('fp_text', 'reference').children[2].value
@@ -156,22 +160,24 @@ def parse_modules(tree):
 
         # indicate placement side
         side = m.findCmd('layer').children[1].value
-        if side.lower()[0] in ['f', 't']:
+        if side.lower().startswith('f') or \
+           side.lower().startswith('t') or \
+           side.lower().startswith('v'):
             mirror = False
-        elif side.lower()[0] in ['b']:
+        elif side.lower().startswith('b') or \
+             side.lower().startswith('h'):
             mirror = True
         else:
-            raise Exception('Unknown board side.')
+            raise Exception('Unknown board side: ' + side)
         module['mirror'] = mirror
 
         # parse X,Y location
-        cmd = m.findCmd('at').children
-        x0 = float(cmd[1].value)
-        y0 = -float(cmd[2].value)
+        at = m.findCmd('at').children
+        mod_pos = cmd2p(at)
 
         # parse rotation
-        if 3 < len(cmd):
-            theta = radians(float(cmd[3].value))
+        if 3 < len(at):
+            theta = radians(float(at[3].value))
         else:
             theta = 0
         module['theta'] = theta
@@ -189,29 +195,29 @@ def parse_modules(tree):
 
                 # read two points
                 if fp_type == 'fp_circle':
-                    points = [cmd.findCmd('center').children, cmd.findCmd('end').children]
+                    entries = [cmd.findCmd('center').children, cmd.findCmd('end').children]
                 elif fp_type == 'fp_poly':
-                    points = [xy.children for xy in cmd.findCmd('pts').findCmdAll('xy')]
+                    entries = [xy.children for xy in cmd.findCmd('pts').findCmdAll('xy')]
                 else:
-                    points = [cmd.findCmd('start').children, cmd.findCmd('end').children]
+                    entries = [cmd.findCmd('start').children, cmd.findCmd('end').children]
                 
                 # parse points
-                points = [(float(entry[1].value), -float(entry[2].value)) for entry in points]
+                points = [cmd2p(entry) for entry in entries]
+                points = np.hstack(points)
 
                 # mirror points if needed
                 if mirror:
-                    points = [invertY(point) for point in points]
+                    points = invertY(points)
 
                 # if a circle, compute the lower left and upper right corners of the bounding box
                 if fp_type == 'fp_circle':
-                    center = points[0]
-                    end = points[1]
+                    center = points[:, 0]
+                    end = points[:, 1]
                     r = distPoints(center, end)
-                    points = [(center[0]-r, center[1]-r), (center[0]+r, center[1]+r)]
+                    points = formRect(2*r, 2*r) - xy2p(r, r) + center
                 
                 # add points to bounding box
-                for point in points:
-                    box.add(*point)
+                box.add(points)
             
         # parse pads
         module['pads'] = []
@@ -226,9 +232,9 @@ def parse_modules(tree):
 
             # read out pad center
             at = cmd.findCmd('at').children
-            center = (float(at[1].value), -float(at[2].value))
+            pad_pos = cmd2p(at)
             if mirror:
-                center = invertY(center)
+                pad_pos = invertY(pad_pos)
 
             # read out pad rotation
             if 3 < len(at):
@@ -242,12 +248,12 @@ def parse_modules(tree):
             w, h = float(size[1].value), float(size[2].value)
     
             # form bounding pad rectangle
-            prect = [(-w/2.0, -h/2.0), (-w/2.0, h/2.0), (w/2.0, h/2.0), (w/2.0, -h/2.0)]
-            prect = [translate(rotate(point, ptheta), center[0], center[1]) for point in prect]
+            prect = formRect(w, h) - xy2p(w/2.0, h/2.0)
+            prect = rotate(prect, ptheta)
+            prect = prect + pad_pos
             pbox = BoundingBox()
-            for point in prect:
-                pbox.add(*point)
-                box.add(*point)
+            pbox.add(prect)
+            box.add(prect)
 
             # generate lower left and upper left corners
             pad['x'] = pbox.xmin
@@ -263,19 +269,22 @@ def parse_modules(tree):
                 netname = None
             pad['netname'] = netname
 
+        if box.empty:
+            continue
+        else:
+            modules.append(module)
+
         # find lower left corner of part with respect to original component center
-        llx = box.xmin
-        lly = box.ymin
+        ll = box.ll
         
         # update pad positions to be relative to the lower left corner
         for pad in module['pads']:
-            pad['x'] -= llx
-            pad['y'] -= lly
+            pad['x'] -= getX(ll)
+            pad['y'] -= getY(ll)
         
         # define location of lower left corner (after rotation and mirroring, if desired)
-        ll = (llx, lly)
-        ll = transform(ll, theta, mirror, x0, y0)
-        module['x'], module['y'] = ll[0], ll[1]
+        ll = transform(ll, theta, mirror, mod_pos)
+        module['x'], module['y'] = getX(ll), getY(ll)
 
         # write extents
         module['width'] = box.width
@@ -307,36 +316,35 @@ def parse_border(tree):
         
         # read two points
         if cmd_type == 'fp_circle':
-            points = [cmd.findCmd('center').children, cmd.findCmd('end').children]
+            entries = [cmd.findCmd('center').children, cmd.findCmd('end').children]
         elif cmd_type == 'fp_poly':
-            points = [xy.children for xy in cmd.findCmd('pts').findCmdAll('xy')]
+            entries = [xy.children for xy in cmd.findCmd('pts').findCmdAll('xy')]
         else:
-            points = [cmd.findCmd('start').children, cmd.findCmd('end').children]
+            entries = [cmd.findCmd('start').children, cmd.findCmd('end').children]
                 
         # parse points
-        points = [(float(entry[1].value), -float(entry[2].value)) for entry in points]
+        points = [cmd2p(entry) for entry in entries]
+        points = np.hstack(points)
 
         # if a circle, compute the lower left and upper right corners of the bounding box
         if cmd_type == 'fp_circle':
-            center = points[0]
-            end = points[1]
+            center = points[:, 0]
+            end = points[:, 1]
             r = distPoints(center, end)
-            points = [(center[0]-r, center[1]-r), (center[0]+r, center[1]+r)]
+            points = formRect(2*r, 2*r) - xy2p(r, r) + center
 
         # translate and rotate if necessary
         if cmd_type in ['fp_line', 'fp_arc', 'fp_circle', 'fp_poly']:
             at = cmd.parent.findCmd('at').children
-            x = float(at[1].value)
-            y = -float(at[2].value)
+            mod_pos = cmd2p(at)
             if 3 < len(at):
                 theta = radians(float(at[3].value))
             else:
                 theta = 0
-            points = [translate(rotate(point, theta), x, y) for point in points]
+            points = rotate(points, theta) + mod_pos
         
         # add points to bounding box
-        for point in points:
-            box.add(*point)
+        box.add(points)
 
     return box
 

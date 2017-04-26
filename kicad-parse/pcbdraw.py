@@ -20,9 +20,6 @@ def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Draw PCB design.')
     parser.add_argument('infile')
-    parser.add_argument('--width', type=int, default=1280)
-    parser.add_argument('--height', type=int, default=720)
-    parser.add_argument('--margin', type=float, default=0.1)
     parser.add_argument('--top', action='store_true')
     parser.add_argument('--bottom', action='store_true')
     parser.add_argument('--alpha', type=float, default=0.75)
@@ -41,14 +38,13 @@ def main():
     pads = []
     rects = []
     for mod in json_dict['modules']:
-        x = mod['x']
-        y = mod['y']
+        mod_pos = xy2p(mod['x'], mod['y'])
         theta = mod['theta']
         mirror = mod['mirror']
 
         # add outlines
         rect = formRect(mod['width'], mod['height'])
-        rect = [transform(point, theta, mirror, x, y) for point in rect] 
+        rect = transform(rect, theta, mirror, mod_pos)
     
         # Add to list of rectangles, noting the side
         rects.append((rect,mirror))
@@ -56,9 +52,10 @@ def main():
         # add pads
         for pad in mod['pads']:
             through = pad['through']
+            pad_pos = xy2p(pad['x'], pad['y'])
             rect = formRect(pad['width'], pad['height'])
-            rect = [translate(point, pad['x'], pad['y']) for point in rect]
-            rect = [transform(point, theta, mirror, x, y) for point in rect] 
+            rect = rect + pad_pos
+            rect = transform(rect, theta, mirror, mod_pos)
 
             # Add to list of pads, noting the side
             pads.append((rect,mirror,through))
@@ -73,19 +70,16 @@ def main():
         color = 'blue' if mirror else 'red'
         draw = (not mirror and args.top) or (mirror and args.bottom)
         if draw:
-            xy = np.array(rect)
-            ax.add_patch(Polygon(xy, closed=True, facecolor='none', edgecolor=color, alpha=args.alpha))
+            ax.add_patch(Polygon(rect.T, closed=True, facecolor='none', edgecolor=color, alpha=args.alpha))
 
     for pad, mirror, through in pads:
         color = 'blue' if mirror else 'red'
         draw = through or (not mirror and args.top) or (mirror and args.bottom)
         if draw:
-            xy = np.array(pad)
-            ax.add_patch(Polygon(xy, closed=True, facecolor=color, edgecolor='black', alpha=args.alpha))
+            ax.add_patch(Polygon(pad.T, closed=True, facecolor=color, edgecolor='black', alpha=args.alpha))
 
     # draw the edge
-    xy = np.array(edge)
-    ax.add_patch(Polygon(xy, closed=True, facecolor='none', edgecolor='green', alpha=args.alpha, lw=3))
+    ax.add_patch(Polygon(edge.T, closed=True, facecolor='none', edgecolor='green', alpha=args.alpha, lw=3))
 
     ax.autoscale(True)
     ax.set_aspect('equal')
