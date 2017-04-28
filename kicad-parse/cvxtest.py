@@ -15,6 +15,7 @@ def isSAT(LAB, LAC, LBC, maxDist):
 	x = Variable(3)
 	w = [1, 1, 1]
 
+	# nonoverlap constraints
 	constraints = []
 	if LAB:
 		constraints.append(x[A]+w[A] <= x[B])
@@ -29,16 +30,20 @@ def isSAT(LAB, LAC, LBC, maxDist):
 	else:
 		constraints.append(x[C]+w[C] <= x[B])
 
+	# maximum distance constraint
 	mLAB = 1 if LAB else -1
 	mLBC = 1 if LBC else -1
-	constraints.append(mLAB*(x[B]+w[B]/2-x[A]-w[A]/2) + mLBC*(x[C]+w[C]/2-x[B]-w[B]/2) <= maxDist)
+	constraints.append(mLAB*(x[B] + w[B]/2.0 - x[A] - w[A]/2.0) + 
+		               mLBC*(x[C] + w[C]/2.0 - x[B] - w[B]/2.0) <= maxDist)
 
+	# define feasibility problem
 	objective = Minimize(0)
 
 	# solve the problem
 	prob = Problem(objective, constraints)
 	result = prob.solve()
 	
+	# if status is not OPTIMAL, then the problem is infeasible
 	return prob.status == OPTIMAL
 
 def main():
