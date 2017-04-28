@@ -12,7 +12,7 @@ class CvxResult:
 		self.xval = xval
 		self.optval = optval
 
-def isSAT(LAB, LAC, LBC, maxDist):
+def solve(LAB, LAC, LBC, maxDist):
 
 	A = 0
 	B = 1
