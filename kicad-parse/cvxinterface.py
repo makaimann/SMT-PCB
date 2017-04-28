@@ -38,9 +38,14 @@ def solve(LAB, LAC, LBC, maxDist):
 
 	# maximum distance constraint
 	mLAB = 1 if LAB else -1
+	mLAC = 1 if LAC else -1
 	mLBC = 1 if LBC else -1
-	constraints.append(mLAB*(x[B] + w[B]/2.0 - x[A] - w[A]/2.0) + 
-		               mLBC*(x[C] + w[C]/2.0 - x[B] - w[B]/2.0) <= maxDist)
+
+	connAB = mLAB*(x[B] + w[B]/2.0 - x[A] - w[A]/2.0)
+	connAC = mLAC*(x[C] + w[C]/2.0 - x[A] - w[A]/2.0)
+	connBC = mLBC*(x[C] + w[C]/2.0 - x[B] - w[B]/2.0)
+
+	constraints.append(connAC + connBC <= maxDist)
 
 	# define feasibility problem
 	objective = Minimize(0)
