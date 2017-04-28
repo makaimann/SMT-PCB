@@ -3,8 +3,8 @@
 '''
 
 from collections import Iterable
-import sorts
-import functions
+from smt_switch import sorts
+from smt_switch import functions
 import traceback
 from classutil import IDObject, NamedIDObject, ValidContainer
 
@@ -361,14 +361,10 @@ class Design(NamedIDObject):
             c = []
             for src_name in self._pinned_comps:
                 comp = self._comps[src_name]
-                cx = self._solver.theory_const(eval('sorts.{}()'.format(comp.pos.x.sort)), comp.x)
-                cy = self._solver.theory_const(eval('sorts.{}()'.format(comp.pos.y.sort)), comp.y)
-                width = self._solver.theory_const(eval('sorts.{}()'.format(comp.pos.horiz_var.sort)), comp.pos.width)
-                height = self._solver.theory_const(eval('sorts.{}()'.format(comp.pos.vert_var.sort)), comp.pos.height)
-                c.append(comp.pos.x == cx)
-                c.append(comp.pos.y == cy)
-                c.append(comp.pos.horiz_var == width)
-                c.append(comp.pos.vert_var == height)
+                c.append(comp.pos.x == comp.x)
+                c.append(comp.pos.y == comp.y)
+                c.append(comp.pos.horiz_var == comp.pos.width)
+                c.append(comp.pos.vert_var == comp.pos.height)
                 c.append(And(comp.pos._d0,
                              Not(comp.pos._d90),
                              Not(comp.pos._d180),

@@ -2,7 +2,7 @@
 Constraint and optimizer functions
 '''
 
-import functions
+from smt_switch import functions
 import solverutil as su
 
 # useful functions

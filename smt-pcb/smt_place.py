@@ -16,7 +16,7 @@ import argparse
 
 # SMT-PCB specific imports
 import z3
-import solvers
+from smt_switch import solvers
 import design
 import position
 import constraints

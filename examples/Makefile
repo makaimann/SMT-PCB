@@ -13,7 +13,7 @@ all: clean place route fab summary
 place: describe_design run_smt_solver kicad_place_parts
 
 describe_design:
-	./$(PROJECT).py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb --dx 0.1 --dy 0.1
+	./$(PROJECT).py --json $(PROJECT).json --pcb $(PROJECT).kicad_pcb --dx 0.1 --dy 0.1 --fast
 
 run_smt_solver:
 	./$(SMT_PCB_DIR)/smt_place.py --json $(PROJECT).json --solver Z3 --logic Int

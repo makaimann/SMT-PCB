@@ -1,8 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from math import pi
 import solverutil as su
-import sorts
-import functions
+from smt_switch import sorts
+from smt_switch import functions
 
 # Sorts
 intsort = sorts.Int()
