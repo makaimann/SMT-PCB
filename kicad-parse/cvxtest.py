@@ -6,6 +6,12 @@
 from cvxpy import *
 import numpy
 
+class CvxResult:
+	def __init__(self, feasible, xval, optval):
+		self.feasible = feasible
+		self.xval = xval
+		self.optval = optval
+
 def isSAT(LAB, LAC, LBC, maxDist):
 
 	A = 0
@@ -44,7 +50,8 @@ def isSAT(LAB, LAC, LBC, maxDist):
 	result = prob.solve()
 	
 	# if status is not OPTIMAL, then the problem is infeasible
-	return prob.status == OPTIMAL
+	feasible = (prob.status == OPTIMAL)
+	return CvxResult(feasible, x.value, prob.value)
 
 def main():
 	pass
