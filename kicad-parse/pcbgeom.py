@@ -18,13 +18,16 @@ def xy2p(x, y):
     return np.matrix([[x], [y]])
 
 class BoundingBox:
-    def __init__(self):
+    def __init__(self, initPoints=None):
         inf = float('inf')
         self.xmin = inf
         self.xmax = -inf
         self.ymin = inf
         self.ymax = -inf
         self.empty = True
+
+        if initPoints is not None:
+            self.add(initPoints)
 
     def add(self, p):
         self.empty = False
