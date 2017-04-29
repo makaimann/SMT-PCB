@@ -48,6 +48,23 @@ class BoundingBox:
         if ymax > self.ymax:
             self.ymax = ymax
 
+    def disjoint(self, other):
+        return (self.xmax < other.xmin or # left of 
+                self.ymax < other.ymin or # below
+                self.xmin > other.xmax or # right of
+                self.ymin > other.ymax)   # above
+
+    def inside(self, other):
+        return (self.xmin >= other.xmin and # right of left edge
+                self.xmax <= other.xmax and # left of right edge
+                self.ymin >= other.ymin and # above bottom edge
+                self.ymax <= other.ymax)    # below top edge
+
+    def overlap(self, other):
+        return (not self.disjoint(other) and 
+                not self.inside(other) and
+                not other.inside(self))
+
     @property
     def width(self):
         return self.xmax - self.xmin
@@ -88,7 +105,10 @@ def formRect(w, h):
     return rect
 
 def distPoints(a, b):
-    return np.linalg.norm(a-b)
+    return normPoints(a, b, 2)
+
+def normPoints(a, b, n):
+    return np.linalg.norm(a-b, n)    
 
 def invertX(p):
     M = np.matrix([[ -1,  0],
