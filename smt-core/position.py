@@ -98,7 +98,7 @@ class PositionBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_coordinates(self, model):
+    def get_coordinates(self):
         '''
         get_coordinates :: z3.ModelRef -> (int, int)
 
@@ -181,13 +181,13 @@ class IntXY(PositionBase):
                          And(self._horiz_var == height, self._vert_var == width)))
 
     def get_coordinates(self):
-        return (int(self.solver.get_value(self.x)), int(self.solver.get_value(self.y)))
+        return (self.solver.get_value(self.x).as_int(), self.solver.get_value(self.y).as_int())
 
     def get_vh(self, model):
         ''' Returns a tuple containing the vertical and horizontal variables
              -- these can be negative which represents a rotation
         '''
-        return (int(self.solver.get_value(self.vert_var)), int(self.solver.get_value(self.horiz_var)))
+        return (self.solver.get_value(self.vert_var).as_int(), self.solver.get_value(self.horiz_var).as_int())
 
 
 class RotXYBase(PositionBase, metaclass=ABCMeta):
@@ -315,17 +315,17 @@ class RotXYBase(PositionBase, metaclass=ABCMeta):
         '''
         Returns rotation relative to input orientation
         '''
-        d0 = self.solver.get_value(self._d0).lower()
-        d90 = self.solver.get_value(self._d90).lower()
-        d180 = self.solver.get_value(self._d180).lower()
-        d270 = self.solver.get_value(self._d270).lower()
-        if d0 == 'true':
+        d0 = self.solver.get_value(self._d0)
+        d90 = self.solver.get_value(self._d90)
+        d180 = self.solver.get_value(self._d180)
+        d270 = self.solver.get_value(self._d270)
+        if d0:
             return 0
-        elif d90 == 'true':
+        elif d90:
             return pi/2
-        elif d180 == 'true':
+        elif d180:
             return pi
-        elif d270 == 'true':
+        elif d270:
             return 3*pi/2
         else:
             raise ValueError('Solver produced invalid rotation!')
@@ -349,7 +349,7 @@ class RotIntXY(RotXYBase):
         return self.solver.theory_const(intsort, value)
 
     def get_coordinates(self):
-        return (int(self.solver.get_value(self.x)), int(self.solver.get_value(self.y)))
+        return (self.solver.get_value(self.x).as_int(), self.solver.get_value(self.y).as_int())
 
 
 class RotRealXY(RotXYBase):
@@ -370,7 +370,6 @@ class RotRealXY(RotXYBase):
         return self.solver.theory_const(realsort, value)
 
     def get_coordinates(self):
-        # currently only support z3
-        x = eval(self.solver.get_value(self.x))
-        y = eval(self.solver.get_value(self.y))
+        x = self.solver.get_value(self.x).as_double()
+        y = self.solver.get_value(self.y).as_double()
         return (x, y)

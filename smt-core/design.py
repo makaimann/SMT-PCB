@@ -3,7 +3,6 @@
 '''
 
 from collections import Iterable
-from smt_switch import sorts
 from smt_switch import functions
 import traceback
 from classutil import IDObject, NamedIDObject, ValidContainer
