@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib.patches import Polygon
 
+from tsp_solver.greedy import solve_tsp
+
 from pcbgeom import *
 from pcblib import *
 
@@ -25,6 +27,10 @@ def drawPadRect(ax, pad, color, alpha):
 
 def drawEdgeRect(ax, edge, alpha):
     ax.add_patch(Polygon(edge.T, closed=True, facecolor='none', edgecolor='green', alpha=alpha, lw=3))
+
+def drawPath(ax, points):
+    mat = np.hstack(points)
+    ax.plot(mat[0,:].T, mat[1,:].T, lw=0.5)
 
 def main():
     # Parse command-line arguments
@@ -64,6 +70,13 @@ def main():
         for pad in mod.pads:
             if pad.through or drawMod:
                 drawPadRect(ax, pad.rectInBoard, color, args.alpha)
+
+    # draw connections between pads
+    for netname, padList in design.buildNetDict().items():
+        if len(padList) < 20:
+            path = solve_tsp(buildDistMat(padList))
+            points = [BoundingBox(padList[i].rectInBoard).center for i in path]
+            drawPath(ax, points)
 
     # Draw board edge
     border = design.border

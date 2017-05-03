@@ -167,3 +167,14 @@ class Pad:
 
     def disjointFromPad(self, other):
         return BoundingBox(self.rectInMod).disjointFrom(BoundingBox(other.rectInMod))
+
+def buildDistMat(padList):
+    N = len(padList)
+    mat = [[0.0 for j in range(N)] for i in range(N)]
+    for i in range(N):
+        for j in range(i+1,N):
+            pi = BoundingBox(padList[i].rectInBoard).center
+            pj = BoundingBox(padList[j].rectInBoard).center
+            mat[i][j] = distPoints(pi, pj)
+            mat[j][i] = distPoints(pi, pj)
+    return mat

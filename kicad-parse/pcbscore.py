@@ -28,7 +28,7 @@ def main():
     for padList in netDict.values():
         bbox = BoundingBox()
         for pad in padList:
-            bbox.add(pad.rectInBoard)
+            bbox.add(BoundingBox(pad.rectInBoard).center)
 
         score += bbox.width + bbox.height
 
