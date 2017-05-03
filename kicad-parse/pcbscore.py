@@ -22,8 +22,6 @@ def main():
     with open(args.infile, 'r') as f:
         design = Design.fromDict(json.load(f))
 
-    # Determine module outlines and pad locations
-
     # Sum the semiperimeters
     score = 0
     netDict = design.buildNetDict()
