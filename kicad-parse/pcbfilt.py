@@ -25,7 +25,7 @@ def main():
     design.modules = [mod for mod in design.modules if mod.pads]
 
     # remove all components that are entirely off the border
-    design.modules = [mod for mod in design.modules if not design.border.bbox.disjoint(mod.bbox)]        
+    design.modules = [mod for mod in design.modules if not design.border.disjointFromMod(mod)]        
 
     # remove all pads that have no connections (if they are surface mount)
     for mod in design.modules:
@@ -33,7 +33,7 @@ def main():
 
     # mark all component that overlap the border as fixed
     for mod in design.modules:
-        if mod.bbox.overlap(design.border.bbox):
+        if design.border.partiallyOverlapsMod(mod):
             mod.fixed = True
 
     # combine overlapping pads with same name and pad type
@@ -41,7 +41,7 @@ def main():
         combinePads(mod)
 
     # make names unique integers
-    #uniquify(design)
+    uniquify(design)
 
     # Convert to design
     with open(args.infile, 'w') as f:
@@ -68,37 +68,61 @@ def combinePads(mod):
     mod.pads = newPadList
 
 def combinePad(padList, mod):
+    numPads = len(padList)
+
+    # create the adjacency matrix
+    adj = [[False for j in range(numPads)] for i in range(numPads)]
+    for i in range(numPads):
+        adj[i][i] = True
+        for j in range(i, numPads):
+            isAdj = not padList[i].disjointFromPad(padList[j])
+            adj[i][j] = isAdj
+            adj[j][i] = isAdj
+
+    # create connected subgroups
     padGroups = []
-    for pad in padList:
-        done = False
-        for group in padGroups:
-            for other in group:
-                if not pad.bbox.disjoint(other.bbox):
-                    group.append(pad)
-                    done = True
-                    break
-            if done:
-                break
-        if not done:
-            padGroups.append([pad])
+    visited = [False for i in range(numPads)]
+    for i in range(numPads):
+        # mark pad as visited
+        if visited[i]:
+            continue
+        visited[i] = True
+
+        # create new pad group
+        padGroup = [i]
+        padGroups.append(padGroup)
+        
+        # create list of immediately adjacent pads
+        toVisit = [j for j in range(numPads) if adj[i][j] and not visited[j]]
+
+        # walk through graph of adjacent pads
+        while toVisit:
+            # all of the pads to visit are adjacent, so add them to the pad group
+            padGroup.extend(toVisit)
+
+            # mark all of these pads as visited
+            for k in toVisit:
+                visited[k] = True
+
+            # generate the next set of pads to visit
+            nextVisit = []
+            for k in toVisit:
+                nextVisit.extend([j for j in range(numPads) if adj[k][j] and not visited[j]])
+
+            # update toVisit
+            toVisit[:] = nextVisit
 
     newPads = []
     for group in padGroups:
         bbox = BoundingBox()
-        for pad in group:
-            bbox.add(formRect(pad.width, pad.height)+pad.pos)
-        newPad = Pad()
+        for padIndex in group:
+            bbox.add(padList[padIndex].rectInMod)
+
+        # use first pad in the group as a starting point
+        newPad = padList[group[0]]
         newPad.pos = bbox.ll
-        newPad.through = group[0].through
         newPad.width = bbox.width
         newPad.height = bbox.height
-        newPad.netname = group[0].netname
-        newPad.padname = group[0].padname
-
-        newPad.rect = formRect(newPad.width, newPad.height)
-        newPad.rect = newPad.rect + newPad.pos
-        newPad.rect = transform(newPad.rect, mod.theta, mod.mirror, mod.pos)
-        newPad.bbox = BoundingBox(newPad.rect)
 
         newPads.append(newPad)
 

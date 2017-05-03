@@ -20,18 +20,17 @@ def main():
 
     # Parse file
     with open(args.infile, 'r') as f:
-        json_dict = json.load(f)
+        design = Design.fromDict(json.load(f))
 
     # Determine module outlines and pad locations
-    mods = [Module.fromDict(mod) for mod in json_dict['modules']]
 
     # Sum the semiperimeters
     score = 0
-    netDict = buildNetDict(mods)
+    netDict = design.buildNetDict()
     for padList in netDict.values():
         bbox = BoundingBox()
         for pad in padList:
-            bbox.add(pad.rect)
+            bbox.add(pad.rectInBoard)
 
         score += bbox.width + bbox.height
 

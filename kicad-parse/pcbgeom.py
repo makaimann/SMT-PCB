@@ -48,22 +48,17 @@ class BoundingBox:
         if ymax > self.ymax:
             self.ymax = ymax
 
-    def disjoint(self, other):
+    def disjointFrom(self, other):
         return (self.xmax < other.xmin or # left of 
                 self.ymax < other.ymin or # below
                 self.xmin > other.xmax or # right of
                 self.ymin > other.ymax)   # above
 
-    def inside(self, other):
-        return (self.xmin >= other.xmin and # right of left edge
-                self.xmax <= other.xmax and # left of right edge
-                self.ymin >= other.ymin and # above bottom edge
-                self.ymax <= other.ymax)    # below top edge
-
-    def overlap(self, other):
-        return (not self.disjoint(other) and 
-                not self.inside(other) and
-                not other.inside(self))
+    def fullyContains(self, other):
+        return (self.xmin <= other.xmin and # left of left edge
+                self.xmax >= other.xmax and # right of right edge
+                self.ymin <= other.ymin and # below bottom edge
+                self.ymax >= other.ymax)    # above top edge
 
     @property
     def width(self):

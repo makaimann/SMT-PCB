@@ -42,12 +42,12 @@ def main():
 
     # Parse file
     with open(args.infile, 'r') as f:
-        json_dict = json.load(f)
+        design = Design.fromDict(json.load(f))
 
     fig, ax = plt.subplots()
 
     # Determine module outlines and pad locations
-    mods = [Module.fromDict(mod) for mod in json_dict['modules']]
+    mods = design.modules
 
     # Draw modules and pads
     for mod in mods:
@@ -59,15 +59,15 @@ def main():
             color = 'red'
         drawMod = (not mod.mirror and args.top) or (mod.mirror and args.bottom)
         if drawMod:
-            drawModRect(ax, mod.rect, color, args.alpha)
+            drawModRect(ax, mod.rectInBoard, color, args.alpha)
 
         for pad in mod.pads:
             if pad.through or drawMod:
-                drawPadRect(ax, pad.rect, color, args.alpha)
+                drawPadRect(ax, pad.rectInBoard, color, args.alpha)
 
     # Draw board edge
-    border = json_dict['border']
-    edge = formRect(border['width'], border['height'])
+    border = design.border
+    edge = formRect(border.width, border.height)
     drawEdgeRect(ax, edge, args.alpha)
 
     ax.autoscale(True)

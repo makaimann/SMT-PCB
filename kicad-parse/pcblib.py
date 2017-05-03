@@ -28,12 +28,36 @@ class Design:
 
         return Design(modules, border)
 
+    def buildNetDict(self):
+        # find closest neighbor for each pad
+        netDict = {}
+        for mod in self.modules:
+            for pad in mod.pads:
+                if pad.netname is None:
+                    continue
+                if pad.netname not in netDict:
+                    netDict[pad.netname] = []
+                netDict[pad.netname].append(pad)
+
+        return netDict
+
 class Border:
     def __init__(self, width, height):
         self.width = width
         self.height = height
 
-        self.bbox = BoundingBox(formRect(self.width, self.height))
+    @property
+    def rect(self):
+        return formRect(self.width, self.height)
+
+    def disjointFromMod(self, mod):
+        return BoundingBox(self.rect).disjointFrom(BoundingBox(mod.rectInBoard))
+
+    def fullyContainsMod(self, mod):
+        return BoundingBox(self.rect).fullyContains(BoundingBox(mod.rectInBoard))
+
+    def partiallyOverlapsMod(self, mod):
+        return not self.disjointFromMod(mod) and not self.fullyContainsMod(mod)
 
     def toDict(self):
         b = {}
@@ -85,18 +109,21 @@ class Module:
         mod.height = m['height']
         mod.fixed = m['fixed']
 
-        # Compute coordinates of module
-        mod.rect = formRect(mod.width, mod.height)
-        mod.rect = transform(mod.rect, mod.theta, mod.mirror, mod.pos)
-        mod.bbox = BoundingBox(mod.rect)
-
         mod.pads = [Pad.fromDict(p, mod) for p in m['pads']]
 
         return mod
 
+    @property
+    def rect(self):
+        return formRect(self.width, self.height)
+
+    @property
+    def rectInBoard(self):
+        return transform(self.rect, self.theta, self.mirror, self.pos)
+
 class Pad:
-    def __init__(self):
-        pass
+    def __init__(self, mod):
+        self.mod = mod
 
     def toDict(self):
         p = {}
@@ -114,7 +141,7 @@ class Pad:
 
     @staticmethod
     def fromDict(p, mod):
-        pad = Pad()
+        pad = Pad(mod)
 
         pad.pos = xy2p(p['x'], p['y'])
         
@@ -124,23 +151,19 @@ class Pad:
         pad.netname = p['netname']
         pad.padname = p['padname']
 
-        # Compute pad coordinates
-        pad.rect = formRect(pad.width, pad.height)
-        pad.rect = pad.rect + pad.pos
-        pad.rect = transform(pad.rect, mod.theta, mod.mirror, mod.pos)
-        pad.bbox = BoundingBox(pad.rect)
-
         return pad
 
-def buildNetDict(mods):
-    # find closest neighbor for each pad
-    netDict = {}
-    for mod in mods:
-        for pad in mod.pads:
-            if pad.netname is None:
-                continue
-            if pad.netname not in netDict:
-                netDict[pad.netname] = []
-            netDict[pad.netname].append(pad)
+    @property
+    def rect(self):
+        return formRect(self.width, self.height)
 
-    return netDict
+    @property
+    def rectInMod(self):
+         return self.rect + self.pos
+
+    @property
+    def rectInBoard(self):
+        return transform(self.rectInMod, self.mod.theta, self.mod.mirror, self.mod.pos)
+
+    def disjointFromPad(self, other):
+        return BoundingBox(self.rectInMod).disjointFrom(BoundingBox(other.rectInMod))

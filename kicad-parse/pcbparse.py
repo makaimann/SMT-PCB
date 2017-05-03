@@ -111,7 +111,7 @@ def parseFpCmd(fpcmd, mod=None):
     return FpCmd(points, layer)
 
 def parsePad(pcmd, mod):
-    pad = Pad()
+    pad = Pad(mod)
 
     # read out pad name
     pad.padname = pcmd.children[1].value
@@ -122,34 +122,34 @@ def parsePad(pcmd, mod):
 
     # read out pad center
     at = pcmd.findCmd('at').children
-    pad.pos = cmd2p(at)
+    pos = cmd2p(at)
 
     # mirror if necessary
     if mod.mirror:
-        pad.pos = invertY(pad.pos)
+        pos = invertY(pos)
 
     # read out pad rotation
     if 3 < len(at):
-        pad.theta = radians(float(at[3].value))
+        theta = radians(float(at[3].value))
     else:
-        pad.theta = 0
-    pad.theta -= mod.theta
+        theta = 0
+    theta -= mod.theta
 
     # read out pad size
     size = pcmd.findCmd('size').children
-    w = float(size[1].value)
-    h = float(size[2].value)
+    width = float(size[1].value)
+    height = float(size[2].value)
 
     # form bounding pad rectangle
-    pad.rect = formRect(w, h) - xy2p(w/2.0, h/2.0)
-    pad.rect = rotate(pad.rect, pad.theta)
-    pad.rect = pad.rect + pad.pos
-    pad.bbox = BoundingBox(pad.rect)
+    rect = formRect(width, height) - xy2p(width/2.0, height/2.0)
+    rect = rotate(rect, theta)
+    rect = rect + pos
+    bbox = BoundingBox(rect)
 
     # generate lower left and upper left corners
-    pad.pos= pad.bbox.ll
-    pad.width = pad.bbox.width
-    pad.height = pad.bbox.height
+    pad.pos= bbox.ll
+    pad.width = bbox.width
+    pad.height = bbox.height
 
     # read out net name
     net = pcmd.findCmd('net')
@@ -187,7 +187,7 @@ def parseModules(tree):
         for pcmd in mcmd.findCmdAll('pad'):
             pad = parsePad(pcmd, mod)
             mod.pads.append(pad)
-            mbox.add(pad.rect)
+            mbox.add(pad.rectInMod)
 
         # Don't add an empty component to the modules list
         if mbox.empty:
