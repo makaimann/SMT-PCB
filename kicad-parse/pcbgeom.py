@@ -34,19 +34,19 @@ class BoundingBox:
 
         xmin = np.min(p[0])
         if xmin < self.xmin:
-            self.xmin = xmin
+            self.xmin = float(xmin)
 
         xmax = np.max(p[0])
         if xmax > self.xmax:
-            self.xmax = xmax
+            self.xmax = float(xmax)
 
         ymin = np.min(p[1])
         if ymin < self.ymin:   
-            self.ymin = ymin
+            self.ymin = float(ymin)
 
         ymax = np.max(p[1])
         if ymax > self.ymax:
-            self.ymax = ymax
+            self.ymax = float(ymax)
 
     def disjointFrom(self, other):
         return (self.xmax < other.xmin or # left of 
@@ -62,11 +62,11 @@ class BoundingBox:
 
     @property
     def width(self):
-        return self.xmax - self.xmin
+        return float(self.xmax - self.xmin)
 
     @property
     def height(self):
-        return self.ymax - self.ymin
+        return float(self.ymax - self.ymin)
 
     @property
     def center(self):
