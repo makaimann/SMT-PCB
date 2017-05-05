@@ -13,6 +13,7 @@ import math
 import time
 import json
 import argparse
+import process_json_dict
 
 # SMT-PCB specific imports
 import z3
@@ -36,7 +37,10 @@ def main():
     args = parser.parse_args()
 
     # determine the placement
-    design, solver = place_rects(args)
+    if args.logic == 'BV':
+        design, solver = place_rects_bv(args)
+    else:
+        design, solver = place_rects(args)
 
     # write the placement to file
     write_placement(design, solver, args)
@@ -102,6 +106,63 @@ def place_rects(args):
     return d, s
 
 
+def place_rects_bv(args):
+    # read in SMT input
+    with open(args.json, 'r') as f:
+        json_dict = json.load(f)
+
+    json_dict = process_json_dict.pre_process(json_dict)
+
+    # write the modified json
+    with open(args.json, 'w') as f:
+        json.dump(json_dict, f, indent=2, sort_keys=True)
+
+    # create the solver
+    s = eval('solvers.{}Solver()'.format(args.solver))
+    if args.solver == 'CVC4':
+        s = solvers.CVC4Solver(lang='auto')
+        s.set_logic('QF_BV'.format(args.logic[0]))
+        s.set_option('produce-models', 'true')
+
+    print('Using solver: {}'.format(args.solver))
+    print('With logic: {}'.format(args.logic))
+
+    # create the placer grid
+    width, height = BoardTools.get_board_dims(json_dict['board_edge'])
+    grid = PlaceGrid(width=width, height=height, dx=args.dx, dy=args.dy)
+    fab = design.Fabric(grid.place_dims)
+
+    # Create the design
+    comps_list = grid.make_comps_list(json_dict['module_dict'])
+    routing_list = grid.make_routing_list(json_dict['routing_list'])
+    d = design.Design(comps_list, routing_list, fab, eval('position.Rot{}XY'.format(args.logic)), s)
+
+    # Add constraints
+    d.add_constraint_generator('no_overlap_bv', constraints.no_overlap_bv)
+    d.add_pad_cg('max_dist', constraints.pad_max_dists)
+
+    # add the constraints to the solver
+    s.Assert(d.constraints)
+
+    # not supported by solver agnostic solvers yet
+    # with open('freeduino.smt', 'w') as f:
+    #    f.write(s.to_smt2())
+    # run the placement
+    start = time.time()
+    result = s.check_sat()
+    end = time.time()
+    place_time = end - start
+    print('Placement took', place_time, 'seconds.')
+    if args.dout:
+        with open(args.dout, 'a+') as f:
+            f.write(str(place_time) + '\n')
+
+    if not result:
+        raise Exception('Problem is unsat.')
+
+    return d, s
+
+
 def write_placement(design, solver, args):
     # read in SMT input
     with open(args.json, 'r') as f:
@@ -124,6 +185,8 @@ def write_placement(design, solver, args):
 
         # get the rotation
         mod['rotation'] = comp.pos.get_rotation()
+
+    json_dict = process_json_dict.post_process(json_dict)
 
     with open(args.json, 'w') as f:
         json.dump(json_dict, f, indent=2, sort_keys=True)

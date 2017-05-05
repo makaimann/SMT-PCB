@@ -1,14 +1,15 @@
 '''
 Constraint and optimizer functions
 '''
-
 from smt_switch import functions
 import solverutil as su
 
 # useful functions
 And = functions.And()
 Or = functions.Or()
-
+bvsge = functions.bvsge()
+bvuge = functions.bvuge()
+bvule = functions.bvule()
 
 
 def in_neighborhood(num_hops):
@@ -100,6 +101,19 @@ def no_overlap(components, wires, fabric):
     return And(c)
 
 
+def no_overlap_bv(components, wires, fabric):
+    comps = list(components)
+    c = []
+    for i in range(0, len(comps)):
+        for j in range(i+1, len(comps)):
+            if not comps[i].is_fixed or not comps[j].is_fixed:
+                c.append(Or(bvule(comps[i].pos.x + comps[i].pos._horiz_var, comps[j].pos.x),
+                            bvule(comps[j].pos.x + comps[j].pos._horiz_var, comps[i].pos.x),
+                            bvule(comps[i].pos.y + comps[i].pos._vert_var, comps[j].pos.y),
+                            bvule(comps[j].pos.y + comps[j].pos._vert_var, comps[i].pos.y)))
+    return And(c)
+
+
 def pad_max_dists(comps, routing_list):
     constraints = []
     for connection in routing_list:
@@ -116,6 +130,7 @@ def pad_max_dists(comps, routing_list):
             comp1.pos.pad_dist_lt(pad1x, pad1y, comp2.pos, pad2x, pad2y, max_length))
 
     return And(constraints)
+
 
 def pad_dists(comps, routing_list):
     dist = 0
