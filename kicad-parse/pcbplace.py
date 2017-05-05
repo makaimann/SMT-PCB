@@ -23,6 +23,7 @@ def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Place PCB design.')
     parser.add_argument('infile')
+    parser.add_argument('--solver', type=str, default='GUROBI')
     parser.add_argument('--limit', type=float, default=None)
     args = parser.parse_args()
 
@@ -61,7 +62,7 @@ def main():
     # Solve the placement problem
     print('Solving MILP problem...')
 
-    prob.solve(GUROBI());
+    prob.solve(getSolver(args.solver));
 
     updateModsFromMILP(design)
 
@@ -69,6 +70,35 @@ def main():
     print('Writing design to file...')
     with open(args.infile, 'w') as f:
         json.dump(design.toDict(), f, indent=2, sort_keys=True)
+
+def getSolver(solver):
+
+    if solver.upper() == 'PULP_CBC_CMD':
+    	return PULP_CBC_CMD()
+    elif solver.upper() == 'CPLEX_DLL':
+    	return CPLEX_DLL()
+    elif solver.upper() == 'CPLEX_CMD':
+    	return CPLEX_CMD()
+    elif solver.upper() == 'CPLEX_PY':
+    	return CPLEX_PY()
+    elif solver.upper() == 'COIN_CMD':
+    	return COIN_CMD()
+    elif solver.upper() == 'COINMP_DLL':
+    	return COINMP_DLL()
+    elif solver.upper() == 'GLPK_CMD':
+    	return GLPK_CMD()
+    elif solver.upper() == 'XPRESS':
+    	return XPRESS()
+    elif solver.upper() == 'GUROBI':
+    	return GUROBI()
+    elif solver.upper() == 'GUROBI_CMD':
+    	return GUROBI_CMD()
+    elif solver.upper() == 'PYGLPK':
+    	return PYGLPK()
+    elif solver.upper() == 'YAPOSIB':
+    	return YAPOSIB()
+    else:
+        raise Exception('Invalid solver')
 
 def makeDesignVariables(prob, design):
     """
