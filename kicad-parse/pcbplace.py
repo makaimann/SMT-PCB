@@ -58,7 +58,7 @@ def main():
     # Solve the placement problem
     print('Solving MILP problem...')
 
-    prob.solve();
+    prob.solve(GUROBI(msg=0));
 
     updateModsFromMILP(design)
 
@@ -153,7 +153,6 @@ def updateModsFromMILP(design):
         # calculate module position
         x = value(mod.varX)
         y = value(mod.varY)
-        print(x,y)
         mod.pos = xy2p(x, y)
 
         # calculate module rotation
