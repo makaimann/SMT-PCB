@@ -129,20 +129,22 @@ def combinePad(padList, mod):
     return newPads
 
 def uniquify(design):
+    # nets is a dictionary that maps an old net name
+    # to a new net name
     nets = {}
     for i, mod in enumerate(design.modules):
         # make module reference unique
-        mod.reference = str(i)
+        mod.reference = 'U'+str(i)
         for j, pad in enumerate(mod.pads):
             # make pad name unique
-            pad.padname = str(j)
+            pad.padname = 'P'+str(j)
 
             # make net name unique
             if pad.netname is None:
                 continue
             if pad.netname not in nets:
-                nets[pad.netname] = len(nets)
-            pad.netname = str(nets[pad.netname])
+                nets[pad.netname] = 'N'+str(len(nets))
+            pad.netname = nets[pad.netname]
 
 if __name__ == '__main__':
     main()
