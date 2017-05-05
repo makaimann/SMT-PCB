@@ -23,6 +23,7 @@ def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Place PCB design.')
     parser.add_argument('infile')
+    parser.add_argument('--limit', type=float, default=None)
     args = parser.parse_args()
 
     # List of constraints to be AND'd together
@@ -50,15 +51,17 @@ def main():
     for idx, (mod1, mod2) in enumerate(itertools.combinations(design.modules, 2)):
         if mod1.fixed and mod2.fixed:
             continue
-        noOverlap(prob, mod1, mod2, design.border, idx)
+        noOverlap(prob, mod1, mod2, design.border)
 
-    # And together top-level constraints
-    print("Forming top-level constraints...")
+    # Constrain total routing distance
+    if args.limit:
+        print('Adding semiperimeter constraint...')
+        addSemiPerimConstr(prob, design, args.limit)
 
     # Solve the placement problem
     print('Solving MILP problem...')
 
-    prob.solve(GUROBI(msg=0));
+    prob.solve(GUROBI());
 
     updateModsFromMILP(design)
 
@@ -101,26 +104,11 @@ def makeDesignVariables(prob, design):
                     prob += (mod.varRot[i] == 0)
 
 def initModSbb(prob, mod):
-    # define expressions
-    constrList = [[] for i in range(4)]
-    for itheta in range(4):
-        sbbExpr = sbbExprRad(mod, itheta)
-        for idx, constr in enumerate(sbbExpr):
-            constrList[idx].append(constr)
-
     # update problem with constraints
-    prob += (mod.sbb.xmin == (mod.varX + lpSum(constrList[0])))
-    prob += (mod.sbb.xmax == (mod.varX + lpSum(constrList[1])))
-    prob += (mod.sbb.ymin == (mod.varY + lpSum(constrList[2])))
-    prob += (mod.sbb.ymax == (mod.varY + lpSum(constrList[3])))
-
-def sbbExprRad(mod, itheta):
-    rbb = BoundingBox(rotate(mod.rect, i2rad(itheta)))
-
-    return [rbb.xmin*mod.varRot[itheta],
-            rbb.xmax*mod.varRot[itheta],
-            rbb.ymin*mod.varRot[itheta],
-            rbb.ymax*mod.varRot[itheta]]
+    prob += (mod.sbb.xmin == (mod.varX + sbbExprRad(mod.rect, mod.varRot, 'xmin')))
+    prob += (mod.sbb.xmax == (mod.varX + sbbExprRad(mod.rect, mod.varRot, 'xmax')))  
+    prob += (mod.sbb.ymin == (mod.varY + sbbExprRad(mod.rect, mod.varRot, 'ymin')))
+    prob += (mod.sbb.ymax == (mod.varY + sbbExprRad(mod.rect, mod.varRot, 'ymax')))
 
 def onBoard(prob, mod, border):
     """
@@ -131,19 +119,52 @@ def onBoard(prob, mod, border):
     prob += (0 <= mod.sbb.ymin)
     prob += (mod.sbb.ymax <= border.height)
 
-def noOverlap(prob, mod1, mod2, border, idx):
+def noOverlap(prob, mod1, mod2, border):
     """
     Constrain mod1 and mod2 not to overlap
     """
-    ovVars = [LpVariable('OV'+str(idx)+'.'+str(i), cat='Binary') for i in range(4)]
+    bvars = [mod1.reference + '_' + mod2.reference + '_' + str(i) for i in range(4)]
+    bvars = [LpVariable(name, cat='Binary') for name in bvars]
 
-    prob += ((mod1.sbb.xmax - mod2.sbb.xmin) <= (border.width*ovVars[0]))
-    prob += ((mod2.sbb.xmax - mod1.sbb.xmin) <= (border.width*ovVars[1]))
-    prob += ((mod1.sbb.ymax - mod2.sbb.ymin) <= (border.height*ovVars[2]))
-    prob += ((mod2.sbb.ymax - mod1.sbb.ymin) <= (border.height*ovVars[3]))
+    prob += ((mod1.sbb.xmax - mod2.sbb.xmin) <= ( border.width*(1-bvars[0])))
+    prob += ((mod2.sbb.xmax - mod1.sbb.xmin) <= ( border.width*(1-bvars[1])))
+    prob += ((mod1.sbb.ymax - mod2.sbb.ymin) <= (border.height*(1-bvars[2])))
+    prob += ((mod2.sbb.ymax - mod1.sbb.ymin) <= (border.height*(1-bvars[3])))
+
+    # one or more of the inequalities must hold
+    prob += (lpSum(bvars) >= 1)
+
+def addSemiPerimConstr(prob, design, limit):
+    """
+    Constrain the sum of net semiperimeters to be less than a target.
+    """
+    addList = []
+    for netname, padList in design.buildNetDict().items():
+        sbb = buildSBB(prob, netname, padList)
+        addList.append(sbb.width)
+        addList.append(sbb.height)
+    prob += (lpSum(addList) <= limit)
+
+def buildSBB(prob, netname, padList):
+    """
+    Builds the logic for a bounding box of pads on a given net.
+    """
+    sbb = SmtBoundingBox(netname)
+    for pad in padList:
+        addPadInSBB(prob, pad, sbb)
+    return sbb
+
+def addPadInSBB(prob, pad, sbb):
+    """
+    Constrains the given pad to be in a bounding box.
+    """
     
-    # one or more of the ovVars must be zero
-    prob += (lpSum(ovVars) <= (len(ovVars)-1))
+    padCenter = BoundingBox(pad.rectInMod).center
+
+    prob += (sbb.xmin <= (pad.mod.varX + sbbExprRad(padCenter, pad.mod.varRot, 'xmin')))
+    prob += (sbb.xmax >= (pad.mod.varX + sbbExprRad(padCenter, pad.mod.varRot, 'xmax')))
+    prob += (sbb.ymin <= (pad.mod.varY + sbbExprRad(padCenter, pad.mod.varRot, 'ymin')))
+    prob += (sbb.ymax >= (pad.mod.varY + sbbExprRad(padCenter, pad.mod.varRot, 'ymax')))
 
 def updateModsFromMILP(design):
     """
@@ -168,6 +189,21 @@ class SmtBoundingBox:
         self.xmax = LpVariable(name + '.xmax')
         self.ymin = LpVariable(name + '.ymin')
         self.ymax = LpVariable(name + '.ymax')
+
+    @property
+    def width(self):
+        return self.xmax - self.xmin
+
+    @property
+    def height(self):
+        return self.ymax - self.ymin
+
+def sbbExprRad(rect, varRot, attr):
+    addList = []
+    for itheta in range(4):
+        rbb = BoundingBox(rotate(rect, i2rad(itheta)))
+        addList.append(getattr(rbb, attr)*varRot[itheta])
+    return lpSum(addList)
 
 def i2rad(itheta):
     return radians(90*itheta)
